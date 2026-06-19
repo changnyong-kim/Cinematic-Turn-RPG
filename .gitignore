@@ -1,0 +1,45 @@
+# Unity generated folders
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+
+# Visual Studio / Rider
+.vs/
+.vscode/
+.idea/
+*.csproj
+*.sln
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+
+# Unity cache / generated
+*.pidb.meta
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# Addressables build output
+ServerData/
+AddressablesBuild/
+aa/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Keep only Assets/_Game under Assets
+Assets/*
+!Assets/_Game/
+!Assets/_Game/**
+
+# Game Resources
+Assets/_Game/Res/
