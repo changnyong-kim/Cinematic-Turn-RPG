@@ -1,6 +1,7 @@
 using Cysharp.Threading.Tasks;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Playables;
 
 public class BattleController : MonoBehaviour
 {
@@ -10,6 +11,12 @@ public class BattleController : MonoBehaviour
 
     [SerializeField]
     private Transform _monsterSpawnPoint;
+
+    [SerializeField]
+    private PlayableDirector _playerAttackDirector;
+
+    [SerializeField]
+    private PlayableDirector _monsterAttackDirector;
 
     [Header("UI")]
     [SerializeField]
@@ -123,6 +130,8 @@ public class BattleController : MonoBehaviour
             return null;
         }
 
+        actorObject.transform.SetPositionAndRotation( spawnPoint.position, spawnPoint.rotation);
+
         actor.Initialize(data);
 
         actorObject.transform.localPosition = Vector3.zero;
@@ -131,7 +140,7 @@ public class BattleController : MonoBehaviour
         return actor;
     }
 
-    private void OnAttackClicked()
+    private async void OnAttackClicked()
     { 
         if (_battleModel == null || _battleModel.CanPlayerAct == false)
         {
@@ -139,18 +148,8 @@ public class BattleController : MonoBehaviour
         }
 
         _viewModel.SetAttackButtonInteractable(false);
-        _viewModel.SetTurnText("Player Attack");
 
-        BattleResult result = _battleModel.PlayerAttack();
-        RefreshBattleView();
-        ApplyBattleResult(result);
-
-        if (result.IsFinished)
-        {
-            return;
-        }
-
-        ExecuteMonsterTurn();
+        await PlayAttackSequenceAsync();
     }
 
     private void ExecuteMonsterTurn()
@@ -201,6 +200,82 @@ public class BattleController : MonoBehaviour
         _viewModel.SetPlayerHp(_battleModel.Player.CurrentHp, _battleModel.Player.MaxHp);
         _viewModel.SetMonsterHp(_battleModel.Monster.CurrentHp, _battleModel.Monster.MaxHp);
     }
+
+    #region 전투 타임라인 시퀀스
+    private async UniTask PlayAttackSequenceAsync()
+    {
+        /*
+     * TODO: Replace delay-based attack sequence with Timeline. 타임라인 교체시 작업설계도
+     *
+     * Current Flow:
+     * Player Attack Animation
+     *      ↓
+     * Wait Hit Timing (Delay)
+     *      ↓
+     * Apply Damage
+     *      ↓
+     * Enemy Hit Animation
+     *      ↓
+     * Execute Monster Turn
+     *
+     * Timeline Flow:
+     * PlayableDirector.Play()
+     *      ↓
+     * Timeline Animation Track
+     *      ↓
+     * Signal: PlayerAttackHit
+     *      ↓
+     * BattleModel.PlayerAttack()
+     * Enemy.PlayHit()
+     * Refresh Battle View
+     *      ↓
+     * Signal: PlayerAttackEnd
+     *      ↓
+     * Execute Monster Turn
+     */
+
+
+        _viewModel.SetTurnText("Player Attack");
+
+        // TODO: Timeline Signal로 교체할 임시 구간
+        await WaitHitTimingAsync();
+
+        BattleResult result = _battleModel.PlayerAttack();
+
+        RefreshBattleView();
+
+        ApplyBattleResult(result);
+
+        if (result.IsFinished)
+        {
+            return;
+        }
+    }
+
+    [SerializeField]
+    int _hitTimeDelay = 2000;
+    private async UniTask WaitHitTimingAsync()
+    {
+        await UniTask.Delay(_hitTimeDelay);
+
+        ExecuteMonsterTurn();
+    }
+
+    public void OnPlayerAttackHit()
+    {
+        BattleResult result = _battleModel.PlayerAttack();
+
+        _battleModel.Monster.PlayHit();
+
+        RefreshBattleView();
+        ApplyBattleResult(result);
+    }
+
+    public void OnPlayerAttackEnd()
+    {
+        ExecuteMonsterTurn();
+    }
+    #endregion
 
     private void OnDestroy()
     {
