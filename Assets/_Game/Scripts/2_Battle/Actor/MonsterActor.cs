@@ -2,15 +2,10 @@ using UnityEngine;
 
 public class MonsterActor : ActorBase
 {
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+    public override void Attack(ActorBase target)
     {
-        
-    }
+        base.Attack(target);
 
-    // Update is called once per frame
-    void Update()
-    {
-        
+        //PlayAttack();
     }
 }

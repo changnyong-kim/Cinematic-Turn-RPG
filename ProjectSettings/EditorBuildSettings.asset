@@ -11,6 +11,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/_Game/Scene/1_Game.unity
     guid: 6a6ca0d614de67942a2464ff626eb889
+  - enabled: 1
+    path: Assets/MedCastle/MedievalCastle.unity
+    guid: d49b27f8b2ec7b04590b53686b5dfbde
   m_configObjects:
     com.unity.addressableassets: {fileID: 11400000, guid: 76ec057e6ee30284c88522a703361587, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}

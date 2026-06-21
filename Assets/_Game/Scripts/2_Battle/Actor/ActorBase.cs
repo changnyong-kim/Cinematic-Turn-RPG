@@ -19,6 +19,8 @@ public abstract class ActorBase : MonoBehaviour
     public int AttackPower => _attackPower;
 
 
+    public Animator GetAnimator => _animator;
+
     public bool IsDead => _currentHp <= 0;
 
     public virtual void Initialize(ActorTableData data)
@@ -60,8 +62,6 @@ public abstract class ActorBase : MonoBehaviour
         {
             return;
         }
-
-        PlayAttack();
 
         target.TakeDamage(_attackPower);
     }
