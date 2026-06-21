@@ -9,6 +9,8 @@ public enum BattleState
 
 public readonly struct BattleResult
 {
+    public static BattleResult None => default;
+
     public BattleState State
     {
         get;

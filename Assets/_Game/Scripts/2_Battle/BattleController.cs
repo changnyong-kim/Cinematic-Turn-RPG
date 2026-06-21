@@ -1,14 +1,9 @@
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
-using UnityEngine.Playables;
-using UnityEngine.SceneManagement;
-using static UnityEditor.Experimental.GraphView.GraphView;
 
-public class BattleController : MonoBehaviour
+public sealed class BattleController : MonoBehaviour
 {
-    private readonly BattleActorMover _actorMover = new();
-
     [Header("Spawn Point")]
     [SerializeField]
     private Transform _playerSpawnPoint;
@@ -16,14 +11,9 @@ public class BattleController : MonoBehaviour
     [SerializeField]
     private Transform _monsterSpawnPoint;
 
+    [Header("Cinematic")]
     [SerializeField]
-    private PlayableDirector _playerAttackDirector;
-
-    [SerializeField]
-    private PlayableDirector _monsterAttackDirector;
-
-    [SerializeField]
-    private PlayableDirector _playerHitDirector, _monsterHitDirector;
+    private BattleCinematicDirector _cinematicDirector;
 
     [Header("UI")]
     [SerializeField]
@@ -46,26 +36,8 @@ public class BattleController : MonoBehaviour
         StartBattleAsync().Forget(Debug.LogException);
     }
 
-    /*
-    private void Update()
-    {
-
-        if (Input.GetKeyDown(KeyCode.Space))
-        {
-            OnAttackClicked();
-        }
-
-        if (Input.GetKeyDown(KeyCode.E))
-        {
-            ExecuteMonsterTurn();
-        }
-    }
-    */
-
     private async UniTask StartBattleAsync()
     {
-        await SceneManager.LoadSceneAsync("MedievalCastle", LoadSceneMode.Additive).ToUniTask();
-
         ActorBase player = null;
         ActorBase monster = null;
 
@@ -106,10 +78,12 @@ public class BattleController : MonoBehaviour
             return;
         }
 
-
         _battleModel = new BattleModel(player, monster);
 
-        BindTimelineActors();
+        if (_cinematicDirector != null)
+        {
+            _cinematicDirector.BindActors(_battleModel.Player, _battleModel.Monster);
+        }
 
         RefreshBattleView();
         _viewModel.SetTurnText("Player Turn");
@@ -118,46 +92,17 @@ public class BattleController : MonoBehaviour
         Debug.Log("[BattleController] Battle Start");
     }
 
-    private void BindTimelineActors()
-    {
-        BindAnimator(_playerAttackDirector, "PlayerAnimationTrack", _battleModel.Player);
-        BindAnimator(_monsterAttackDirector, "MonsterAnimationTrack", _battleModel.Monster);
-        BindAnimator(_playerHitDirector, "AnimationTrack", _battleModel.Player);
-        BindAnimator(_monsterHitDirector, "AnimationTrack", _battleModel.Monster);
-    }
-
-    private void BindAnimator(PlayableDirector director, string trackName, ActorBase actor)
-    {
-        if (director == null || actor == null)
-        {
-            return;
-        }
-
-        Animator animator = actor.GetAnimator;
-
-        if (animator == null)
-        {
-            Debug.LogError($"[BattleController] Animator not found. Actor: {actor.name}");
-            return;
-        }
-
-        foreach (PlayableBinding binding in director.playableAsset.outputs)
-        {
-            if (binding.streamName == trackName)
-            {
-                director.SetGenericBinding(binding.sourceObject, animator);
-                return;
-            }
-        }
-
-        Debug.LogError($"[BattleController] Timeline track not found. TrackName: {trackName}");
-    }
-
     private async UniTask<ActorBase> SpawnActorAsync(ActorTableData data, Transform spawnPoint)
     {
         if (data == null)
         {
             Debug.LogError("[BattleController] ActorTableData is null.");
+            return null;
+        }
+
+        if (spawnPoint == null)
+        {
+            Debug.LogError($"[BattleController] SpawnPoint is null. Actor: {data.Name}");
             return null;
         }
 
@@ -177,26 +122,104 @@ public class BattleController : MonoBehaviour
             return null;
         }
 
-        actorObject.transform.SetPositionAndRotation( spawnPoint.position, spawnPoint.rotation);
-
-        actor.Initialize(data);
-
+        actorObject.transform.SetPositionAndRotation(spawnPoint.position, spawnPoint.rotation);
         actorObject.transform.localPosition = Vector3.zero;
         actorObject.transform.localRotation = Quaternion.identity;
+
+        actor.Initialize(data);
 
         return actor;
     }
 
-    private async void OnAttackClicked()
-    { 
+    private void OnAttackClicked()
+    {
         if (_battleModel == null || _battleModel.CanPlayerAct == false)
         {
             return;
         }
 
         _viewModel.SetAttackButtonInteractable(false);
+        PlayAttackSequenceAsync();
+    }
 
-        await PlayAttackSequenceAsync();
+    private void PlayAttackSequenceAsync()
+    {
+        if (_battleModel == null || _cinematicDirector == null)
+        {
+            return;
+        }
+
+        _viewModel.SetTurnText("Player Attack");
+
+        _cinematicDirector.PlayPlayerAttackAsync(
+            _battleModel.Player,
+            _battleModel.Monster,
+            ApplyPlayerAttackDamage,
+            OnTurnEnd);
+    }
+
+    private BattleResult ApplyPlayerAttackDamage()
+    {
+        BattleResult result = _battleModel.PlayerAttack();
+
+        RefreshBattleView();
+        ApplyBattleResult(result);
+
+        return result;
+    }
+
+    private BattleState OnTurnEnd()
+    {
+        BattleState battleState = _battleModel.State;
+
+        switch (battleState)
+        {
+            case BattleState.PlayerTurn:
+                {
+                    _viewModel.SetTurnText("Player Turn");
+                    _viewModel.SetAttackButtonInteractable(true);
+
+                    //PlayAttackSequenceAsync();
+                    break;
+                }
+            case BattleState.MonsterTurn:
+                {
+                    ExecuteMonsterTurnAsync();
+                    break;
+                }
+            default:
+                {
+                    break;
+                }
+        }
+
+        return battleState;
+    }
+
+    private void ExecuteMonsterTurnAsync()
+    {
+        if (_battleModel == null || _battleModel.CanMonsterAct == false || _cinematicDirector == null)
+        {
+            return;
+        }
+
+        _viewModel.SetTurnText("Monster Attack");
+
+        _cinematicDirector.PlayMonsterAttackAsync(
+            _battleModel.Monster,
+            _battleModel.Player,
+            ApplyMonsterAttackDamage,
+            OnTurnEnd);
+    }
+
+    private BattleResult ApplyMonsterAttackDamage()
+    {
+        BattleResult result = _battleModel.MonsterAttack();
+
+        RefreshBattleView();
+        ApplyBattleResult(result);
+
+        return result;
     }
 
     private void ApplyBattleResult(BattleResult result)
@@ -226,105 +249,6 @@ public class BattleController : MonoBehaviour
         _viewModel.SetMonsterHp(_battleModel.Monster.CurrentHp, _battleModel.Monster.MaxHp);
     }
 
-
-    #region 플레이어 전투 타임라인 시퀀스
-
-    private Vector3 _playerOriginPosition;
-
-    private async UniTask PlayAttackSequenceAsync()
-    {
-        /*
-     * TODO: Replace delay-based attack sequence with Timeline. 타임라인 교체시 작업설계도
-     *
-     * Current Flow:
-     * Player Attack Animation
-     *      ↓
-     * Wait Hit Timing (Delay)
-     *      ↓
-     * Apply Damage
-     *      ↓
-     * Enemy Hit Animation
-     *      ↓
-     * Execute Monster Turn
-     *
-     * Timeline Flow:
-     * PlayableDirector.Play()
-     *      ↓
-     * Timeline Animation Track
-     *      ↓
-     * Signal: PlayerAttackHit
-     *      ↓
-     * BattleModel.PlayerAttack()
-     * Enemy.PlayHit()
-     * Refresh Battle View
-     *      ↓
-     * Signal: PlayerAttackEnd
-     *      ↓
-     * Execute Monster Turn
-     */
-        _viewModel.SetTurnText("Player Attack");
-
-        _playerOriginPosition = _battleModel.Player.transform.position;
-
-        await _actorMover.MoveToTargetAsync(
-            _battleModel.Player.GetAnimator,
-            _battleModel.Player.transform,
-            _battleModel.Monster.transform,
-             2.5f, 1.5f);
-
-        _playerAttackDirector.Play();
-    }
-
-    private async UniTask ReturnPlayerAsync()
-    {
-        await _actorMover.ReturnAsync(
-            _battleModel.Player.GetAnimator,
-            _battleModel.Player.transform,
-            _playerOriginPosition,
-            1.5f);
-
-        await ExecuteMonsterTurn();
-    }
-    #endregion
-
-
-    #region 몬스터 타임라인 시퀀스
-    private async UniTask ExecuteMonsterTurn()
-    {
-        if (_battleModel == null || _battleModel.CanMonsterAct == false)
-        {
-            return;
-        }
-
-        _viewModel.SetTurnText("Monster Attack");
-
-        _monsterOriginPosition = _battleModel.Monster.transform.position;
-
-        await _actorMover.MoveToTargetAsync(
-            _battleModel.Monster.GetAnimator,
-            _battleModel.Monster.transform,
-            _battleModel.Player.transform,
-            1.5f, 1f);
-
-        _monsterAttackDirector.Play();
-    }
-
-    private BattleResult _lastMonsterAttackResult;
-    private Vector3 _monsterOriginPosition;
-
-    private async UniTask ReturnMonsterAsync()
-    {
-        await _actorMover.ReturnAsync(
-            _battleModel.Monster.GetAnimator,
-            _battleModel.Monster.transform,
-            _monsterOriginPosition,
-            .8f);
-
-        _viewModel.SetTurnText("Player Turn");
-        _viewModel.SetAttackButtonInteractable(true);
-    }
-    #endregion
-
     private void OnDestroy()
     {
         if (_battleView != null)
@@ -333,54 +257,4 @@ public class BattleController : MonoBehaviour
             _battleView.Unbind();
         }
     }
-
-    #region 플레이어 타임라인 시그널 리시버
-    private BattleResult _lastAttackResult;
-
-    public void OnPlayerAttackApplyDamage()
-    {
-        _lastAttackResult = _battleModel.PlayerAttack();
-
-        RefreshBattleView();
-
-        ApplyBattleResult(_lastAttackResult);
-
-        //몬스터 히트리액션
-        _monsterHitDirector.Play();
-    }
-
-    public void OnPlayerAttackEnd()
-    {
-        if (_lastAttackResult.IsFinished)
-        {
-            return;
-        }
-
-        ReturnPlayerAsync().Forget();
-    }
-    #endregion
-
-    #region 몬스터 타임라인 시그널 리시버
-    public void OnMonsterAttackApplyDamage()
-    {
-        _lastMonsterAttackResult = _battleModel.MonsterAttack();
-
-        RefreshBattleView();
-
-        ApplyBattleResult(_lastMonsterAttackResult);
-
-        //플레이어 히트리액션
-        _playerHitDirector.Play();
-    }
-
-    public void OnMonsterAttackEnd()
-    {
-        if (_lastMonsterAttackResult.IsFinished)
-        {
-            return;
-        }
-
-        ReturnMonsterAsync().Forget();
-    }
-    #endregion
 }
