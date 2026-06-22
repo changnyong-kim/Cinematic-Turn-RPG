@@ -1,11 +1,17 @@
-using System;
 using Cysharp.Threading.Tasks;
+using System;
 using UnityEngine;
 using UnityEngine.Playables;
 
 public sealed class BattleCinematicDirector : MonoBehaviour
 {
     private readonly BattleActorMover _actorMover = new BattleActorMover();
+
+    /// <summary>
+    /// 현재 피격 '당하는' 대상
+    /// </summary>
+    private PlayableDirector _currentHitDirector;
+    private float _currentReturnDuration;
 
     [Header("Timeline")]
     [SerializeField]
@@ -20,6 +26,9 @@ public sealed class BattleCinematicDirector : MonoBehaviour
     [SerializeField]
     private PlayableDirector _monsterHitDirector;
 
+    [SerializeField]
+    private PlayableDirector _playerBlockImpactDirector;
+
     [Header("Track Names")]
     [SerializeField]
     private string _playerAttackTrackName = "PlayerAnimationTrack";
@@ -28,7 +37,7 @@ public sealed class BattleCinematicDirector : MonoBehaviour
     private string _monsterAttackTrackName = "MonsterAnimationTrack";
 
     [SerializeField]
-    private string _hitTrackName = "AnimationTrack";
+    private string _commonTrackName = "AnimationTrack";
 
     [Header("Move")]
     [SerializeField]
@@ -56,50 +65,88 @@ public sealed class BattleCinematicDirector : MonoBehaviour
 
     ActorBase _attackActor;
     Vector3 _attackerOriginPosition;
+    Quaternion _attackerOriginRotation;
 
     public void BindActors(ActorBase player, ActorBase monster)
     {
         BindAnimator(_playerAttackDirector, _playerAttackTrackName, player);
         BindAnimator(_monsterAttackDirector, _monsterAttackTrackName, monster);
-        BindAnimator(_playerHitDirector, _hitTrackName, player);
-        BindAnimator(_monsterHitDirector, _hitTrackName, monster);
+        BindAnimator(_playerHitDirector, _commonTrackName, player);
+        BindAnimator(_monsterHitDirector, _commonTrackName, monster);
+        BindAnimator(_playerBlockImpactDirector, _commonTrackName, player);
     }
 
-    public void PlayPlayerAttackAsync(
-    ActorBase player,
-    ActorBase monster,
+    public void PlayAttack(
+    BattleTeam attackerTeam,
+    ActorBase attacker,
+    ActorBase defender,
     Func<BattleResult> onImpact,
     Func<BattleState> onTurnEnd)
     {
-         PlayAttackAsync(
-            attacker: player,
-            defender: monster,
-            attackDirector: _playerAttackDirector,
-            hitDirector: _monsterHitDirector,
-            approachDistance: _playerApproachDistance,
-            moveDuration: _playerMoveDuration,
-            returnDuration: _playerReturnDuration,
-            onImpact: onImpact,
-            onTurnEnd: onTurnEnd).Forget();
+        PlayableDirector attackDirector = GetAttackDirector(attackerTeam);
+        PlayableDirector hitDirector = GetDefenderHitDirector(attackerTeam);
+        float approachDistance = GetApproachDistance(attackerTeam);
+        float moveDuration = GetMoveDuration(attackerTeam);
+        float returnDuration = GetReturnDuration(attackerTeam);
+
+        _currentHitDirector = hitDirector;
+        _currentReturnDuration = returnDuration;
+
+        PlayAttackAsync(
+            attacker,
+            defender,
+            attackDirector,
+            hitDirector,
+            approachDistance,
+            moveDuration,
+            returnDuration,
+            onImpact,
+            onTurnEnd).Forget();
     }
 
-    public void PlayMonsterAttackAsync(
-        ActorBase monster,
-        ActorBase player,
-        Func<BattleResult> onImpact,
-        Func<BattleState> onTurnEnd)
+    #region Get 유틸리티
+    private PlayableDirector GetAttackDirector(BattleTeam attackerTeam)
     {
-        PlayAttackAsync(
-            attacker: monster,
-            defender: player,
-            attackDirector: _monsterAttackDirector,
-            hitDirector: _playerHitDirector,
-            approachDistance: _monsterApproachDistance,
-            moveDuration: _monsterMoveDuration,
-            returnDuration: _monsterReturnDuration,
-            onImpact: onImpact,
-            onTurnEnd: onTurnEnd).Forget();
+        return attackerTeam == BattleTeam.Ally
+            ? _playerAttackDirector
+            : _monsterAttackDirector;
     }
+
+    private PlayableDirector GetDefenderHitDirector(BattleTeam attackerTeam)
+    {
+        return attackerTeam == BattleTeam.Ally
+            ? _monsterHitDirector
+            : _playerHitDirector;
+    }
+
+    private PlayableDirector GetTeamHitDirector(BattleTeam targetTeam)
+    {
+        return targetTeam == BattleTeam.Ally
+            ? _playerHitDirector
+            : _monsterHitDirector;
+    }
+
+    private float GetApproachDistance(BattleTeam attackerTeam)
+    {
+        return attackerTeam == BattleTeam.Ally
+            ? _playerApproachDistance
+            : _monsterApproachDistance;
+    }
+
+    private float GetMoveDuration(BattleTeam attackerTeam)
+    {
+        return attackerTeam == BattleTeam.Ally
+            ? _playerMoveDuration
+            : _monsterMoveDuration;
+    }
+
+    private float GetReturnDuration(BattleTeam attackerTeam)
+    {
+        return attackerTeam == BattleTeam.Ally
+            ? _playerReturnDuration
+            : _monsterReturnDuration;
+    }
+    #endregion
 
     private async UniTask PlayAttackAsync(
         ActorBase attacker,
@@ -119,8 +166,10 @@ public sealed class BattleCinematicDirector : MonoBehaviour
         }
 
         _attackerOriginPosition = attacker.transform.position;
+        _attackerOriginRotation = attacker.transform.rotation;
 
         _attackActor = attacker;
+
         _onImpact = onImpact;
         _onTurnEnd = onTurnEnd;
 
@@ -135,9 +184,11 @@ public sealed class BattleCinematicDirector : MonoBehaviour
             approachDistance,
             moveDuration);
 
-        PlayDirectorAsync(attackDirector);
+        PlayDirector(attackDirector);
     }
 
+
+    #region 일반 공격 시그널
     /// <summary>
     /// Timeline SignalReceiver에서 호출한다.
     /// 공격 판정 타이밍에 BattleModel 데미지 적용 + UI 갱신 콜백을 실행한다.
@@ -157,7 +208,21 @@ public sealed class BattleCinematicDirector : MonoBehaviour
 
         _lastResult = _onImpact();
 
-        PlayDirectorAsync(_lastResult.State == BattleState.PlayerTurn ? _playerHitDirector : _monsterHitDirector);
+        if (_lastResult.IsFinished)
+        {
+            return;
+        }
+
+        switch (_lastResult.ReactionType)
+        {
+            case DefenderReactionType.Hit:
+                PlayDirector(_currentHitDirector);
+                break;
+
+            case DefenderReactionType.Parry:
+                PlayDirector(_playerBlockImpactDirector);
+                break;
+        }
 
         _hitApplied = true;
     }
@@ -175,18 +240,65 @@ public sealed class BattleCinematicDirector : MonoBehaviour
 
     public async UniTask AttackEnd()
     {
+        if (_lastResult.ReactionType == DefenderReactionType.Parry)
+        {
+            _attackActor.PlayIdle();
+
+            if (_onTurnEnd != null)
+            {
+                _onTurnEnd();
+            }
+
+            return;
+        }
+
         await _actorMover.ReturnAsync(
             _attackActor.GetAnimator,
             _attackActor.transform,
             _attackerOriginPosition,
-            _lastResult.State == BattleState.PlayerTurn ? _playerReturnDuration : _monsterReturnDuration);
+            _currentReturnDuration);
+
+        // 최종 보정
+        _attackActor.transform.SetPositionAndRotation(_attackerOriginPosition, _attackerOriginRotation);
 
         if (_onTurnEnd != null)
         {
             _onTurnEnd();
         }
     }
+    #endregion
 
+
+    #region 반격 시그널
+    public void OnParryImpactSignal()
+    {
+        // TODO: counter hit VFX, monster hit reaction, camera shake
+
+        PlayDirector(GetTeamHitDirector(BattleTeam.Enemy));
+    }
+
+    public void OnParryEndSignal()
+    {
+        OnParryEndAsync().Forget();
+    }
+
+    private async UniTask OnParryEndAsync()
+    {
+        await _actorMover.ReturnAsync(
+           _attackActor.GetAnimator,
+           _attackActor.transform,
+           _attackerOriginPosition,
+           _currentReturnDuration);
+
+        // 최종 보정
+        _attackActor.transform.SetPositionAndRotation(_attackerOriginPosition, _attackerOriginRotation);
+
+        if (_onTurnEnd != null)
+        {
+            _onTurnEnd();
+        }
+    }
+    #endregion
 
     private void BindAnimator(PlayableDirector director, string trackName, ActorBase actor)
     {
@@ -223,7 +335,7 @@ public sealed class BattleCinematicDirector : MonoBehaviour
         Debug.LogError($"[BattleCinematicDirector] Timeline track not found. TrackName: {trackName}");
     }
 
-    private void PlayDirectorAsync(PlayableDirector director)
+    private void PlayDirector(PlayableDirector director)
     {
         if (director == null)
         {
@@ -233,6 +345,18 @@ public sealed class BattleCinematicDirector : MonoBehaviour
         director.time = 0;
         director.Play();
     }
+
+    #region 타임라인 연출 테슽트용
+    [Header("Editor Test")]
+    [SerializeField]
+    private PlayableDirector _testDirector;
+
+    [ContextMenu("Test Play Director")]
+    private void TestPlayDirector()
+    {
+        PlayDirector(_testDirector);
+    }
+    #endregion
 
     private void ClearCallbacks()
     {

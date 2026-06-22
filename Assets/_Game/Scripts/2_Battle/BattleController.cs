@@ -1,6 +1,7 @@
-using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
+using System.Collections.Generic;
 using UnityEngine;
+using static UnityEngine.LowLevelPhysics2D.PhysicsQuery;
 
 public sealed class BattleController : MonoBehaviour
 {
@@ -131,6 +132,7 @@ public sealed class BattleController : MonoBehaviour
         return actor;
     }
 
+    #region 플레이어 입력 액션
     private void OnAttackClicked()
     {
         if (_battleModel == null || _battleModel.CanPlayerAct == false)
@@ -139,33 +141,57 @@ public sealed class BattleController : MonoBehaviour
         }
 
         _viewModel.SetAttackButtonInteractable(false);
-        PlayAttackSequenceAsync();
+        PlayAttackSequenceAsync(BattleTeam.Ally);
     }
 
-    private void PlayAttackSequenceAsync()
+    public void OnParryInput()
+    {
+        if (_battleModel.CanRequestParry == false)
+        {
+            return;
+        }
+
+        _battleModel.RequestParry();
+
+        _battleModel.Player.SetBlocking(true);
+        // 또는 ParryReadyDirector 재생
+    }
+    #endregion
+
+
+    private void PlayAttackSequenceAsync(BattleTeam attackerTeam)
     {
         if (_battleModel == null || _cinematicDirector == null)
         {
             return;
         }
 
-        _viewModel.SetTurnText("Player Attack");
+        ActorBase attacker = GetActor(attackerTeam);
+        ActorBase defender = GetOpponent(attackerTeam);
 
-        _cinematicDirector.PlayPlayerAttackAsync(
-            _battleModel.Player,
-            _battleModel.Monster,
-            ApplyPlayerAttackDamage,
+        _viewModel.SetTurnText(attackerTeam == BattleTeam.Ally
+            ? "Player Attack"
+            : "Monster Attack");
+
+        _cinematicDirector.PlayAttack(
+            attackerTeam,
+            attacker,
+            defender,
+            () => ApplyAttackDamage(attackerTeam),
             OnTurnEnd);
     }
 
-    private BattleResult ApplyPlayerAttackDamage()
+    private void ExecuteMonsterTurnAsync()
     {
-        BattleResult result = _battleModel.PlayerAttack();
+        if (_battleModel == null || _battleModel.CanMonsterAct == false || _cinematicDirector == null)
+        {
+            return;
+        }
 
-        RefreshBattleView();
-        ApplyBattleResult(result);
+        _battleModel.OpenParryWindow();
 
-        return result;
+        //_battleModel.Player.SetBlocking(true);
+        PlayAttackSequenceAsync(BattleTeam.Enemy);
     }
 
     private BattleState OnTurnEnd()
@@ -177,6 +203,7 @@ public sealed class BattleController : MonoBehaviour
             case BattleState.PlayerTurn:
                 {
                     _viewModel.SetTurnText("Player Turn");
+                    _battleModel.Player.SetBlocking(false);
                     _viewModel.SetAttackButtonInteractable(true);
 
                     //PlayAttackSequenceAsync();
@@ -184,6 +211,7 @@ public sealed class BattleController : MonoBehaviour
                 }
             case BattleState.MonsterTurn:
                 {
+                    //_battleModel.Player.SetBlocking(true);
                     ExecuteMonsterTurnAsync();
                     break;
                 }
@@ -196,30 +224,30 @@ public sealed class BattleController : MonoBehaviour
         return battleState;
     }
 
-    private void ExecuteMonsterTurnAsync()
+    private BattleResult ApplyAttackDamage(BattleTeam attackerTeam)
     {
-        if (_battleModel == null || _battleModel.CanMonsterAct == false || _cinematicDirector == null)
-        {
-            return;
-        }
-
-        _viewModel.SetTurnText("Monster Attack");
-
-        _cinematicDirector.PlayMonsterAttackAsync(
-            _battleModel.Monster,
-            _battleModel.Player,
-            ApplyMonsterAttackDamage,
-            OnTurnEnd);
-    }
-
-    private BattleResult ApplyMonsterAttackDamage()
-    {
-        BattleResult result = _battleModel.MonsterAttack();
+        BattleResult result = attackerTeam == BattleTeam.Ally
+            ? _battleModel.PlayerAttack()
+            : _battleModel.MonsterAttack();
 
         RefreshBattleView();
         ApplyBattleResult(result);
 
         return result;
+    }
+
+    private ActorBase GetActor(BattleTeam team)
+    {
+        return team == BattleTeam.Ally
+            ? _battleModel.Player
+            : _battleModel.Monster;
+    }
+
+    private ActorBase GetOpponent(BattleTeam team)
+    {
+        return team == BattleTeam.Ally
+            ? _battleModel.Monster
+            : _battleModel.Player;
     }
 
     private void ApplyBattleResult(BattleResult result)

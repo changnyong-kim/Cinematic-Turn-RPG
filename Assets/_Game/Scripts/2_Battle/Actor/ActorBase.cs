@@ -2,6 +2,9 @@ using UnityEngine;
 
 public abstract class ActorBase : MonoBehaviour
 {
+    private static readonly int IsBlockingHash = Animator.StringToHash("IsBlocking");
+    private static readonly int IdleHash = Animator.StringToHash("Idle");
+
     private static readonly int AttackTrigger = Animator.StringToHash("Attack");
     private static readonly int HitTrigger = Animator.StringToHash("Hit");
     private static readonly int DodgeTrigger = Animator.StringToHash("Dodge");
@@ -79,6 +82,16 @@ public abstract class ActorBase : MonoBehaviour
     protected virtual void Die()
     {
         Debug.Log($"{name} Dead");
+    }
+
+    public void PlayIdle()
+    {
+        GetAnimator.Play(IdleHash, 0, 0f);
+    }
+
+    public void SetBlocking(bool isBlocking)
+    {
+        _animator.SetBool(IsBlockingHash, isBlocking);
     }
 
     private void SetTrigger(int triggerHash)
