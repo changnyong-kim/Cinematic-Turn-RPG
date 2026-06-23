@@ -103,4 +103,28 @@ public abstract class ActorBase : MonoBehaviour
 
         _animator.SetTrigger(triggerHash);
     }
+
+    public void PauseAnimator()
+    {
+        Animator animator = GetAnimator;
+
+        if (animator == null)
+        {
+            return;
+        }
+
+        animator.speed = 0f;
+    }
+
+    public void ResumeAnimator()
+    {
+        Animator animator = GetAnimator;
+
+        if (animator == null)
+        {
+            return;
+        }
+
+        animator.speed = 1f;
+    }
 }

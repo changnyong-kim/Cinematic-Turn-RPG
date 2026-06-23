@@ -1,9 +1,8 @@
 using Cysharp.Threading.Tasks;
 using System.Collections.Generic;
 using UnityEngine;
-using static UnityEngine.LowLevelPhysics2D.PhysicsQuery;
 
-public sealed class BattleController : MonoBehaviour
+public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandler
 {
     [Header("Spawn Point")]
     [SerializeField]
@@ -84,6 +83,7 @@ public sealed class BattleController : MonoBehaviour
         if (_cinematicDirector != null)
         {
             _cinematicDirector.BindActors(_battleModel.Player, _battleModel.Monster);
+            _cinematicDirector.BindEventHandler(this);
         }
 
         RefreshBattleView();
@@ -146,14 +146,14 @@ public sealed class BattleController : MonoBehaviour
 
     public void OnParryInput()
     {
-        if (_battleModel.CanRequestParry == false)
+        if (_battleModel == null && _battleModel.CanRequestParry == false)
         {
             return;
         }
 
         _battleModel.RequestParry();
-
         _battleModel.Player.SetBlocking(true);
+
         // 또는 ParryReadyDirector 재생
     }
     #endregion
@@ -187,8 +187,6 @@ public sealed class BattleController : MonoBehaviour
         {
             return;
         }
-
-        _battleModel.OpenParryWindow();
 
         //_battleModel.Player.SetBlocking(true);
         PlayAttackSequenceAsync(BattleTeam.Enemy);
@@ -248,6 +246,31 @@ public sealed class BattleController : MonoBehaviour
         return team == BattleTeam.Ally
             ? _battleModel.Monster
             : _battleModel.Player;
+    }
+
+
+    public void OnParryWindowOpened()
+    {
+        if (_battleModel == null)
+        {
+            return;
+        }
+
+        _battleModel.OpenParryWindow();
+
+        // TODO: UI 붙이면 여기서 처리
+    }
+
+    public void OnParryWindowClosed()
+    {
+        if (_battleModel == null)
+        {
+            return;
+        }
+
+        _battleModel.CloseParryWindow();
+
+        // TODO: UI 붙이면 여기서 처리
     }
 
     private void ApplyBattleResult(BattleResult result)

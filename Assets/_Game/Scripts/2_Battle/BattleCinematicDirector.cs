@@ -7,6 +7,13 @@ public sealed class BattleCinematicDirector : MonoBehaviour
 {
     private readonly BattleActorMover _actorMover = new BattleActorMover();
 
+    private IBattleCinematicEventHandler _eventHandler;
+
+    public void BindEventHandler(IBattleCinematicEventHandler eventHandler)
+    {
+        _eventHandler = eventHandler;
+    }
+
     /// <summary>
     /// 현재 피격 '당하는' 대상
     /// </summary>
@@ -39,6 +46,10 @@ public sealed class BattleCinematicDirector : MonoBehaviour
     [SerializeField]
     private string _commonTrackName = "AnimationTrack";
 
+    [Header("Parry")]
+    [SerializeField] private GameObject _parryImpactEffectPrefab;
+    [SerializeField] private Transform _parryImpactPoint;
+
     [Header("Move")]
     [SerializeField]
     private float _playerApproachDistance = 2.5f;
@@ -61,8 +72,10 @@ public sealed class BattleCinematicDirector : MonoBehaviour
     private Func<BattleResult> _onImpact;
     private Func<BattleState> _onTurnEnd;
     private BattleResult _lastResult = BattleResult.None;
-    private bool _hitApplied;
 
+    private bool _attackImpactHandled;
+
+    private BattleTeam _currentAttackerTeam;
     ActorBase _attackActor;
     Vector3 _attackerOriginPosition;
     Quaternion _attackerOriginRotation;
@@ -89,6 +102,7 @@ public sealed class BattleCinematicDirector : MonoBehaviour
         float moveDuration = GetMoveDuration(attackerTeam);
         float returnDuration = GetReturnDuration(attackerTeam);
 
+        _currentAttackerTeam = attackerTeam;
         _currentHitDirector = hitDirector;
         _currentReturnDuration = returnDuration;
 
@@ -175,7 +189,7 @@ public sealed class BattleCinematicDirector : MonoBehaviour
 
         _lastResult = BattleResult.None;
 
-        _hitApplied = false;
+        _attackImpactHandled = false;
 
         await _actorMover.MoveToTargetAsync(
             attacker.GetAnimator,
@@ -195,11 +209,10 @@ public sealed class BattleCinematicDirector : MonoBehaviour
     /// </summary>
     public void OnAttackImpactSignal()
     {
-        if (_hitApplied)
+        if (_attackImpactHandled)
         {
             return;
         }
-
         if (_onImpact == null)
         {
             Debug.LogWarning("[BattleCinematicDirector] Hit signal received, but applyHit callback is null.");
@@ -220,11 +233,12 @@ public sealed class BattleCinematicDirector : MonoBehaviour
                 break;
 
             case DefenderReactionType.Parry:
+                ParryHitReactionAsync().Forget();
                 PlayDirector(_playerBlockImpactDirector);
                 break;
         }
 
-        _hitApplied = true;
+        _attackImpactHandled = true;
     }
 
     public void OnAttackEndSignal()
@@ -235,23 +249,78 @@ public sealed class BattleCinematicDirector : MonoBehaviour
             return;
         }
 
-        AttackEnd().Forget();
-    }
-
-    public async UniTask AttackEnd()
-    {
         if (_lastResult.ReactionType == DefenderReactionType.Parry)
         {
-            _attackActor.PlayIdle();
-
-            if (_onTurnEnd != null)
-            {
-                _onTurnEnd();
-            }
-
             return;
         }
 
+        AttackEnd().Forget();
+    }
+
+    /// <summary>
+    /// 패링 성공 시 몬스터 공격 타임라인은 종료되지만,
+    //  반격 시퀀스가 아직 진행 중이므로 복귀/턴 종료는 하지 않는다.
+    //  몬스터는 반격 피격 전까지 현재 자세로 경직시킨다.
+    /// </summary>
+    /// <returns></returns>
+    public async UniTask ParryHitReactionAsync()
+    {
+        if (_attackActor == null)
+        {
+            return;
+        }
+
+        PlayableDirector attackDirector = GetAttackDirector(_currentAttackerTeam);
+        attackDirector.Stop();
+        _attackActor.GetAnimator.speed = 1f;
+        _attackActor.GetAnimator.CrossFade("Hit", 0.03f, 0, 0f);
+
+        await UniTask.Delay(100, ignoreTimeScale: true);
+
+        _attackActor.PauseAnimator();
+        //await UniTask.Delay(300);
+
+        //_attackActor.PauseAnimator();
+
+        //_attackActor.GetAnimator.Play("Hit");
+
+        //await UniTask.Delay(2000);
+
+        //_attackActor.PauseAnimator();
+
+        //_attackActor.PlayHit();
+
+        //await UniTask.Delay(200);
+
+        //_attackActor.PauseAnimator();
+
+        //GetAttackDirector(_currentAttackerTeam).Stop();
+
+        //await HitStopAsync(.2f);
+
+        /*
+        //_attackActor.PlayIdle();
+
+        await UniTask.Delay(ParryHitFreezeDelayMs);
+
+        _attackActor.PauseAnimator();
+        */
+    }
+
+    private async UniTask HitStopAsync(float duration)
+    {
+        Time.timeScale = 0.05f;
+
+        await UniTask.Delay(
+            Mathf.RoundToInt(duration * 1000f),
+            ignoreTimeScale: true);
+
+        Time.timeScale = 1f;
+    }
+
+
+    public async UniTask AttackEnd()
+    {
         await _actorMover.ReturnAsync(
             _attackActor.GetAnimator,
             _attackActor.transform,
@@ -268,17 +337,62 @@ public sealed class BattleCinematicDirector : MonoBehaviour
     }
     #endregion
 
+    #region 패링 판정 시그널
+    // 1. 패링 가능 구간 시작
+    public void OnParryEnableSignal()
+    {
+        // TODO: UI 연출 시작
+
+        if (_eventHandler == null)
+        {
+            return;
+        }
+
+        _eventHandler.OnParryWindowOpened();
+    }
+
+
+    // 2. 패링 가능 구간 종료
+    public void OnParryDisableSignal()
+    {
+        if (_eventHandler == null)
+        {
+            return;
+        }
+
+        _eventHandler.OnParryWindowClosed();
+    }
+    #endregion
+
 
     #region 반격 시그널
     public void OnParryImpactSignal()
     {
-        // TODO: counter hit VFX, monster hit reaction, camera shake
+        //적 경직 풀기
+        _attackActor.ResumeAnimator();
 
-        PlayDirector(GetTeamHitDirector(BattleTeam.Enemy));
+        PlayParryImpactEffect();
+
+        PlayDirector(GetTeamHitDirector(_currentAttackerTeam));
+    }
+
+    private void PlayParryImpactEffect()
+    {
+        if (_parryImpactEffectPrefab == null || _parryImpactPoint == null)
+        {
+            return;
+        }
+
+        Instantiate(
+            _parryImpactEffectPrefab,
+            _parryImpactPoint.position,
+            _parryImpactPoint.rotation);
     }
 
     public void OnParryEndSignal()
     {
+        _attackActor.ResumeAnimator();
+
         OnParryEndAsync().Forget();
     }
 
@@ -299,6 +413,7 @@ public sealed class BattleCinematicDirector : MonoBehaviour
         }
     }
     #endregion
+
 
     private void BindAnimator(PlayableDirector director, string trackName, ActorBase actor)
     {
@@ -360,8 +475,10 @@ public sealed class BattleCinematicDirector : MonoBehaviour
 
     private void ClearCallbacks()
     {
+        _attackActor?.ResumeAnimator();
+
         _onImpact = null;
         _onTurnEnd = null;
-        _hitApplied = false;
+        _attackImpactHandled = false;
     }
 }

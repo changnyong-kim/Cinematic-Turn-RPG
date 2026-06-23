@@ -52,6 +52,20 @@ public sealed class BattleModel
         Player.IsDead == false &&
         Monster.IsDead == false;
 
+    #region Parry
+    private bool _isParryWindowOpen;
+    private bool _isParryRequested;
+
+    public bool CanRequestParry =>
+        State == BattleState.MonsterTurn &&
+        _isParryWindowOpen &&
+        _isParryRequested == false &&
+        Player != null &&
+        Monster != null &&
+        Player.IsDead == false &&
+        Monster.IsDead == false;
+    #endregion
+
     public BattleModel(ActorBase player, ActorBase monster)
     {
         Player = player;
@@ -71,6 +85,8 @@ public sealed class BattleModel
         if (Monster.IsDead)
         {
             State = BattleState.Win;
+            ClearParryWindow();
+
             return new BattleResult(State);
         }
 
@@ -89,8 +105,8 @@ public sealed class BattleModel
         if (_isParryRequested)
         {
             State = BattleState.PlayerTurn;
-            _isParryRequested = false;
-            _isParryWindowOpen = false;
+            ClearParryWindow();
+
             return new BattleResult(State, DefenderReactionType.Parry);
         }
 
@@ -99,25 +115,34 @@ public sealed class BattleModel
         if (Player.IsDead)
         {
             State = BattleState.Lose;
+            ClearParryWindow();
+
             return new BattleResult(State);
         }
 
         State = BattleState.PlayerTurn;
-        _isParryWindowOpen = false;
+        ClearParryWindow();
+
         return new BattleResult(State);
     }
 
-
-    #region ÆÐ¸µ
-    private bool _isParryWindowOpen;
-    private bool _isParryRequested;
-
-    public bool CanRequestParry => State == BattleState.MonsterTurn
-                                   && _isParryWindowOpen
-                                   && _isParryRequested == false;
-
     public void OpenParryWindow()
     {
+        if (State != BattleState.MonsterTurn)
+        {
+            return;
+        }
+
+        if (Player == null || Monster == null)
+        {
+            return;
+        }
+
+        if (Player.IsDead || Monster.IsDead)
+        {
+            return;
+        }
+
         _isParryWindowOpen = true;
         _isParryRequested = false;
     }
@@ -136,5 +161,10 @@ public sealed class BattleModel
     {
         _isParryWindowOpen = false;
     }
-    #endregion
+
+    private void ClearParryWindow()
+    {
+        _isParryWindowOpen = false;
+        _isParryRequested = false;
+    }
 }
