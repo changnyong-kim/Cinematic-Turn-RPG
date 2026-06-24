@@ -69,11 +69,6 @@ public abstract class ActorBase : MonoBehaviour
         target.TakeDamage(_attackPower);
     }
 
-    public virtual void PlayAttack()
-    {
-        SetTrigger(AttackTrigger);
-    }
-
     public virtual void PlayHit()
     {
         SetTrigger(HitTrigger);
@@ -84,14 +79,18 @@ public abstract class ActorBase : MonoBehaviour
         Debug.Log($"{name} Dead");
     }
 
-    public void PlayIdle()
-    {
-        GetAnimator.Play(IdleHash, 0, 0f);
-    }
-
     public void SetBlocking(bool isBlocking)
     {
         _animator.SetBool(IsBlockingHash, isBlocking);
+    }
+
+    public void ForceIdle()
+    {
+        SetBlocking(false);
+
+        _animator.speed = 1f;
+        _animator.Play(IdleHash, 0, 0f);
+        _animator.Update(0f);
     }
 
     private void SetTrigger(int triggerHash)

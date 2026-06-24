@@ -5,6 +5,8 @@ public sealed class BattleViewModel
     public ObservableValue<string> TurnText { get; } = new ObservableValue<string>("Ready");
     public ObservableValue<bool> AttackButtonInteractable { get; } = new ObservableValue<bool>(false);
 
+    public ObservableValue<bool> ParryButtonInteractable { get; } = new ObservableValue<bool>(false);
+
     public void SetPlayerHp(int currentHp, int maxHp)
     {
         PlayerHpText.SetValue($"Player HP: {currentHp}/{maxHp}");
@@ -23,5 +25,10 @@ public sealed class BattleViewModel
     public void SetAttackButtonInteractable(bool isInteractable)
     {
         AttackButtonInteractable.SetValue(isInteractable);
+    }
+
+    public void SetParryButtonInteractable(bool isInteractable)
+    {
+        ParryButtonInteractable.SetValue(isInteractable);
     }
 }

@@ -5,6 +5,16 @@ using UnityEngine.UI;
 
 public sealed class UIBattleView : MonoBehaviour
 {
+    [Header("Turn Text Materials")]
+    [SerializeField]
+    private Material _normalTurnMaterial;
+
+    [SerializeField]
+    private Material _playerTurnMaterial;
+
+    [SerializeField]
+    private Material _monsterTurnMaterial;
+
     [SerializeField]
     private TextMeshProUGUI _playerHpText;
 
@@ -15,11 +25,14 @@ public sealed class UIBattleView : MonoBehaviour
     private TextMeshProUGUI _turnText;
 
     [SerializeField]
-    private Button _attackButton;
+    private GameObject _playerTrunBar, _monsterTrunBar;
+
+    [SerializeField]
+    private Button _attackButton, _parryButton;
 
     private BattleViewModel _viewModel;
 
-    public event Action OnAttackClicked;
+    public event Action OnAttackClicked, OnParryClicked;
 
     public void Bind(BattleViewModel viewModel)
     {
@@ -30,16 +43,25 @@ public sealed class UIBattleView : MonoBehaviour
         _viewModel.PlayerHpText.OnValueChanged += SetPlayerHpText;
         _viewModel.MonsterHpText.OnValueChanged += SetMonsterHpText;
         _viewModel.TurnText.OnValueChanged += SetTurnText;
+
         _viewModel.AttackButtonInteractable.OnValueChanged += SetAttackButtonInteractable;
+        _viewModel.ParryButtonInteractable.OnValueChanged += SetParryButtonInteractable;
 
         SetPlayerHpText(_viewModel.PlayerHpText.Value);
         SetMonsterHpText(_viewModel.MonsterHpText.Value);
         SetTurnText(_viewModel.TurnText.Value);
+
         SetAttackButtonInteractable(_viewModel.AttackButtonInteractable.Value);
+        SetParryButtonInteractable(_viewModel.ParryButtonInteractable.Value);
 
         if (_attackButton != null)
         {
             _attackButton.onClick.AddListener(HandleAttackButtonClicked);
+        }
+
+        if (_parryButton != null)
+        {
+            _parryButton.onClick.AddListener(HandleParryButtonClicked);
         }
     }
 
@@ -50,13 +72,20 @@ public sealed class UIBattleView : MonoBehaviour
             _viewModel.PlayerHpText.OnValueChanged -= SetPlayerHpText;
             _viewModel.MonsterHpText.OnValueChanged -= SetMonsterHpText;
             _viewModel.TurnText.OnValueChanged -= SetTurnText;
+
             _viewModel.AttackButtonInteractable.OnValueChanged -= SetAttackButtonInteractable;
+            _viewModel.ParryButtonInteractable.OnValueChanged -= SetParryButtonInteractable;
             _viewModel = null;
         }
 
         if (_attackButton != null)
         {
             _attackButton.onClick.RemoveListener(HandleAttackButtonClicked);
+        }
+
+        if(_parryButton != null)
+        {
+            _parryButton.onClick.RemoveListener(HandleParryButtonClicked);
         }
     }
 
@@ -81,7 +110,54 @@ public sealed class UIBattleView : MonoBehaviour
         if (_turnText != null)
         {
             _turnText.text = text;
+            ApplyTurnTextMaterial(text);
         }
+    }
+
+    private void ApplyTurnTextMaterial(string text)
+    {
+        if (_turnText == null)
+        {
+            return;
+        }
+
+        if (text == "Player Turn" || text == "PLAYER TURN")
+        {
+            _turnText.text = "PLAYER TURN";
+            _turnText.fontSharedMaterial = _playerTurnMaterial;
+
+            TurnBarSetting(true);
+            
+            return;
+        }
+
+        if (text == "Monster Attack" || text == "MONSTER ATTACK")
+        {
+            _turnText.text = "MONSTER ATTACK";
+            _turnText.fontSharedMaterial = _monsterTurnMaterial;
+
+            TurnBarSetting(false);
+
+            return;
+        }
+
+        if (text == "Parry Success" || text == "P A R R Y")
+        {
+            _turnText.text = "P A R R Y";
+            _turnText.fontSharedMaterial = _playerTurnMaterial;
+
+            TurnBarSetting(true);
+
+            return;
+        }
+
+        _turnText.fontSharedMaterial = _normalTurnMaterial;
+    }
+
+    private void TurnBarSetting(bool isPlayerState)
+    {
+        _playerTrunBar.SetActive(isPlayerState);
+        _monsterTrunBar.SetActive(! isPlayerState);
     }
 
     private void SetAttackButtonInteractable(bool isInteractable)
@@ -92,8 +168,21 @@ public sealed class UIBattleView : MonoBehaviour
         }
     }
 
+    private void SetParryButtonInteractable(bool isInteractable)
+    {
+        if (_parryButton != null)
+        {
+            _parryButton.interactable = isInteractable;
+        }
+    }
+
     private void HandleAttackButtonClicked()
     {
         OnAttackClicked?.Invoke();
+    }
+
+    private void HandleParryButtonClicked()
+    {
+        OnParryClicked?.Invoke();
     }
 }

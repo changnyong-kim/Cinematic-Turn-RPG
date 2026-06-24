@@ -75,6 +75,7 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
             Debug.LogError("[BattleController] Battle start failed. Player or Monster is missing.");
             _viewModel.SetTurnText("Battle Start Failed");
             _viewModel.SetAttackButtonInteractable(false);
+            _viewModel.SetParryButtonInteractable(false);
             return;
         }
 
@@ -87,8 +88,11 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
         }
 
         RefreshBattleView();
-        _viewModel.SetTurnText("Player Turn");
+
+        _viewModel.SetTurnText("PLAYER TURN");
+
         _viewModel.SetAttackButtonInteractable(true);
+        _viewModel.SetParryButtonInteractable(false);
 
         Debug.Log("[BattleController] Battle Start");
     }
@@ -141,7 +145,8 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
         }
 
         _viewModel.SetAttackButtonInteractable(false);
-        PlayAttackSequenceAsync(BattleTeam.Ally);
+
+        PlayAttackSequence(BattleTeam.Ally);
     }
 
     public void OnParryInput()
@@ -151,15 +156,14 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
             return;
         }
 
-        _battleModel.RequestParry();
-        _battleModel.Player.SetBlocking(true);
+        _viewModel.SetParryButtonInteractable(false);
 
-        // 또는 ParryReadyDirector 재생
+        _battleModel.RequestParry();
     }
     #endregion
 
 
-    private void PlayAttackSequenceAsync(BattleTeam attackerTeam)
+    private void PlayAttackSequence(BattleTeam attackerTeam)
     {
         if (_battleModel == null || _cinematicDirector == null)
         {
@@ -170,8 +174,8 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
         ActorBase defender = GetOpponent(attackerTeam);
 
         _viewModel.SetTurnText(attackerTeam == BattleTeam.Ally
-            ? "Player Attack"
-            : "Monster Attack");
+            ? "PLAYER ATTACK"
+            : "MONSTER ATTACK");
 
         _cinematicDirector.PlayAttack(
             attackerTeam,
@@ -181,15 +185,16 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
             OnTurnEnd);
     }
 
-    private void ExecuteMonsterTurnAsync()
+    private void ExecuteMonsterTurn()
     {
         if (_battleModel == null || _battleModel.CanMonsterAct == false || _cinematicDirector == null)
         {
             return;
         }
 
-        //_battleModel.Player.SetBlocking(true);
-        PlayAttackSequenceAsync(BattleTeam.Enemy);
+        _battleModel.Player.SetBlocking(true);
+
+        PlayAttackSequence(BattleTeam.Enemy);
     }
 
     private BattleState OnTurnEnd()
@@ -201,17 +206,25 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
             case BattleState.PlayerTurn:
                 {
                     _viewModel.SetTurnText("Player Turn");
-                    _battleModel.Player.SetBlocking(false);
-                    _viewModel.SetAttackButtonInteractable(true);
 
-                    //PlayAttackSequenceAsync();
+                    _battleModel.Player.SetBlocking(false);
+
+                    _viewModel.SetAttackButtonInteractable(true);
+                    _viewModel.SetParryButtonInteractable(false);
+
+                    //OnAttackClicked();
                     break;
                 }
             case BattleState.MonsterTurn:
                 {
-                    //_battleModel.Player.SetBlocking(true);
-                    ExecuteMonsterTurnAsync();
-                    break;
+                    //_battleModel = new BattleModel(_battleModel.Player, _battleModel.Monster);
+                    //OnAttackClicked();
+
+                    _viewModel.SetAttackButtonInteractable(false);
+                    _viewModel.SetParryButtonInteractable(true);
+
+                    ExecuteMonsterTurn();
+                break;
                 }
             default:
                 {
@@ -249,6 +262,7 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
     }
 
 
+    #region 타임라인 이벤트 핸들러 콜백
     public void OnParryWindowOpened()
     {
         if (_battleModel == null)
@@ -272,6 +286,12 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
 
         // TODO: UI 붙이면 여기서 처리
     }
+
+    public void OnParrySucceeded()
+    {
+        _viewModel.SetTurnText("P A R R Y");
+    }
+    #endregion
 
     private void ApplyBattleResult(BattleResult result)
     {
