@@ -2,6 +2,7 @@ using Cysharp.Threading.Tasks;
 using System;
 using UnityEngine;
 using UnityEngine.Playables;
+using UnityEngine.Rendering;
 
 public sealed class BattleCinematicDirector : MonoBehaviour
 {
@@ -49,19 +50,6 @@ public sealed class BattleCinematicDirector : MonoBehaviour
     [Header("Camera Rig")]
     [SerializeField]
     private BattleCameraRig _cameraRig;
-
-    [Header("Parry Effects")]
-    [SerializeField]
-    private GameObject _parryCueEffectPrefab;
-
-    [SerializeField]
-    private GameObject _parryBlockEffectPrefab;
-
-    [SerializeField]
-    private Transform _parryCueEffectPoint;
-
-    [SerializeField]
-    private Transform _parryBlockEffectPoint;
 
     [Header("Move")]
     [SerializeField]
@@ -306,7 +294,11 @@ public sealed class BattleCinematicDirector : MonoBehaviour
             }
             case DefenderReactionType.Parry:
             {
-                _cameraRig?.PlayParrySuccessCamera(_attackActor, _defendActor);
+                _cameraRig?.PlayParrySuccessCamera(_defendActor, _attackActor);
+                //_cameraRig?.PlayAttackCamera(_currentAttackerTeam,  _attackActor, _defendActor);
+
+                LookAtTargetFlat(_attackActor, _defendActor);
+                LookAtTargetFlat(_defendActor, _attackActor);
 
                 _eventHandler.OnParrySucceeded();
 
@@ -399,8 +391,6 @@ public sealed class BattleCinematicDirector : MonoBehaviour
             return;
         }
 
-        PlayParryImpactEffect(_parryCueEffectPrefab, _attackActor.transform, true);
-
         _eventHandler.OnParryWindowOpened();
     }
 
@@ -454,7 +444,7 @@ public sealed class BattleCinematicDirector : MonoBehaviour
             _counterZoomInDuration,
             _counterZoomOutDuration);
 
-        PlayParryImpactEffect(_parryBlockEffectPrefab, _attackActor.transform, false);
+        //PlayParryImpactEffect(_parryBlockEffectPrefab, _attackActor.transform, false);
     }
 
     public void OnParryEndSignal()
@@ -483,73 +473,6 @@ public sealed class BattleCinematicDirector : MonoBehaviour
             _onTurnEnd();
         }
     }
-    #endregion
-
-
-    #region 이펙트 연출
-    [SerializeField]
-    private Vector3 _parryNotiEffectOffset = new Vector3(0f, 1.2f, 0);
-
-    [SerializeField]
-    private Vector3 _parryHitEffectOffset = new Vector3(0f, 1.2f, 0.7f);
-
-    [SerializeField]
-    private float _effectCameraForwardOffset = 0.2f;
-
-    /// <summary>
-    /// 임시 이펙트 생성 함수
-    /// </summary>
-    /// <param name="effectCue"></param>
-    /// <param name="spawnPoint"></param>
-    private void PlayParryImpactEffect(GameObject effectCue, Transform spawnPoint, bool isNoti)
-    {
-        if (effectCue == null || spawnPoint == null)
-        {
-            return;
-        }
-
-        Vector3 parryBlockEffectOffset = (isNoti) ? _parryNotiEffectOffset : _parryHitEffectOffset;
-
-        Vector3 effectPosition =
-        spawnPoint.position
-        + spawnPoint.up * parryBlockEffectOffset.y
-        + spawnPoint.forward * parryBlockEffectOffset.z
-        + spawnPoint.right * parryBlockEffectOffset.x;
-
-        Camera mainCamera = Camera.main;
-
-        if (mainCamera != null)
-        {
-            Vector3 directionToCamera =
-                (mainCamera.transform.position - effectPosition).normalized;
-
-            effectPosition += directionToCamera * _effectCameraForwardOffset;
-        }
-
-        Quaternion effectRotation = GetCameraFacingRotation(effectPosition);
-
-        Instantiate(effectCue, effectPosition, effectRotation);
-    }
-
-    private Quaternion GetCameraFacingRotation(Vector3 effectPosition)
-    {
-        Camera mainCamera = Camera.main;
-
-        if (mainCamera == null)
-        {
-            return Quaternion.identity;
-        }
-
-        Vector3 directionToCamera =
-            mainCamera.transform.position - effectPosition;
-
-        if (directionToCamera.sqrMagnitude <= 0.0001f)
-        {
-            return Quaternion.identity;
-        }
-
-        return Quaternion.LookRotation(directionToCamera.normalized);
-    }
 
     [SerializeField]
     private float _parryHitStopTimeScale = 0.15f;
@@ -569,6 +492,7 @@ public sealed class BattleCinematicDirector : MonoBehaviour
 
         Time.timeScale = previousTimeScale;
     }
+
     #endregion
 
 
@@ -619,6 +543,25 @@ public sealed class BattleCinematicDirector : MonoBehaviour
     [SerializeField]
     private float _counterZoomOutDuration = 0.14f;
     #endregion
+
+
+    private void LookAtTargetFlat(ActorBase actor, ActorBase target)
+    {
+        if (actor == null || target == null)
+        {
+            return;
+        }
+
+        Vector3 direction = target.transform.position - actor.transform.position;
+        direction.y = 0f;
+
+        if (direction.sqrMagnitude <= 0.0001f)
+        {
+            return;
+        }
+
+        actor.transform.rotation = Quaternion.LookRotation(direction.normalized);
+    }
 
     private void ClearCallbacks()
     {

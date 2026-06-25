@@ -19,7 +19,13 @@ public sealed class UIBattleView : MonoBehaviour
     private TextMeshProUGUI _playerHpText;
 
     [SerializeField]
+    private Image _playerHpImg;
+
+    [SerializeField]
     private TextMeshProUGUI _monsterHpText;
+
+    [SerializeField]
+    private Image _monsterHpImg;
 
     [SerializeField]
     private TextMeshProUGUI _turnText;
@@ -89,19 +95,22 @@ public sealed class UIBattleView : MonoBehaviour
         }
     }
 
-    private void SetPlayerHpText(string text)
+    private void SetPlayerHpText((float, string) hpInfo)
     {
         if (_playerHpText != null)
         {
-            _playerHpText.text = text;
+            _playerHpImg.fillAmount = hpInfo.Item1;
+            _playerHpText.text = hpInfo.Item2;
         }
     }
 
-    private void SetMonsterHpText(string text)
+    private void SetMonsterHpText((float, string) hpInfo)
     {
+
         if (_monsterHpText != null)
         {
-            _monsterHpText.text = text;
+            _monsterHpImg.fillAmount = hpInfo.Item1;
+            _monsterHpText.text = hpInfo.Item2;
         }
     }
 

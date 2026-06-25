@@ -91,7 +91,7 @@ public sealed class BattleModel
         }
 
         State = BattleState.MonsterTurn;
-
+        
         return new BattleResult(State);
     }
 

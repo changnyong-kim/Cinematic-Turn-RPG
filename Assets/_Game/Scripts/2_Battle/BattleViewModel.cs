@@ -1,7 +1,7 @@
 public sealed class BattleViewModel
 {
-    public ObservableValue<string> PlayerHpText { get; } = new ObservableValue<string>("Player HP: -");
-    public ObservableValue<string> MonsterHpText { get; } = new ObservableValue<string>("Monster HP: -");
+    public ObservableValue<(float, string)> PlayerHpText { get; } = new ObservableValue<(float, string)>();
+    public ObservableValue<(float, string)> MonsterHpText { get; } = new ObservableValue<(float, string)>();
     public ObservableValue<string> TurnText { get; } = new ObservableValue<string>("Ready");
     public ObservableValue<bool> AttackButtonInteractable { get; } = new ObservableValue<bool>(false);
 
@@ -9,12 +9,14 @@ public sealed class BattleViewModel
 
     public void SetPlayerHp(int currentHp, int maxHp)
     {
-        PlayerHpText.SetValue($"Player HP: {currentHp}/{maxHp}");
+        var fillAmount = (float)currentHp / maxHp;
+        PlayerHpText.SetValue((fillAmount, $"{currentHp}/{maxHp}"));
     }
 
     public void SetMonsterHp(int currentHp, int maxHp)
     {
-        MonsterHpText.SetValue($"Monster HP: {currentHp}/{maxHp}");
+        var fillAmount = (float)currentHp / maxHp;
+        MonsterHpText.SetValue((fillAmount, $"{currentHp}/{maxHp}"));
     }
 
     public void SetTurnText(string text)

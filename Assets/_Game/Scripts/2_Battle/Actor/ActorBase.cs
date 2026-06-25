@@ -13,6 +13,9 @@ public abstract class ActorBase : MonoBehaviour
     [SerializeField]
     private Animator _animator;
 
+    [SerializeField]
+    private GameObject _auraParticleGob;
+
     protected int _maxHp;
     protected int _currentHp;
     private int _attackPower;
@@ -36,6 +39,8 @@ public abstract class ActorBase : MonoBehaviour
         {
             _animator = GetComponentInChildren<Animator>();
         }
+
+        AcitveAuraParticle(true);
     }
 
     public virtual void TakeDamage(int damage)
@@ -45,7 +50,9 @@ public abstract class ActorBase : MonoBehaviour
             return;
         }
 
-        damage = 0;
+        //damage = 0;
+
+        AcitveAuraParticle(false);
 
         _currentHp -= damage;
 
@@ -56,11 +63,13 @@ public abstract class ActorBase : MonoBehaviour
             return;
         }
 
-        PlayHit();
+        //PlayHit();
     }
 
     public virtual void Attack(ActorBase target)
     {
+        AcitveAuraParticle(false);
+
         if (target == null || target.IsDead)
         {
             return;
@@ -76,7 +85,7 @@ public abstract class ActorBase : MonoBehaviour
 
     protected virtual void Die()
     {
-        Debug.Log($"{name} Dead");
+        GetAnimator.CrossFade("Die", 0.1f);
     }
 
     public void SetBlocking(bool isBlocking)
@@ -113,6 +122,9 @@ public abstract class ActorBase : MonoBehaviour
         }
 
         animator.speed = 0f;
+
+        //Ω∫≈ÈΩ√ ∆ƒ∆º≈¨ ∏ÿ√„ or ∫Ò»∞º∫»≠
+        AcitveAuraParticle(false);
     }
 
     public void ResumeAnimator()
@@ -125,5 +137,17 @@ public abstract class ActorBase : MonoBehaviour
         }
 
         animator.speed = 1f;
+
+        AcitveAuraParticle(true);
+    }
+
+    public void AcitveAuraParticle(bool active)
+    {
+        if (_auraParticleGob == null)
+        {
+            return;
+        }
+
+        _auraParticleGob.gameObject?.SetActive(active);
     }
 }

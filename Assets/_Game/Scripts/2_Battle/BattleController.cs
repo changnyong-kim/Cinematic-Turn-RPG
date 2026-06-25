@@ -208,17 +208,16 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
                     _viewModel.SetTurnText("Player Turn");
 
                     _battleModel.Player.SetBlocking(false);
+                    _battleModel.Monster.AcitveAuraParticle(true);
 
                     _viewModel.SetAttackButtonInteractable(true);
                     _viewModel.SetParryButtonInteractable(false);
 
-                    //OnAttackClicked();
                     break;
                 }
             case BattleState.MonsterTurn:
                 {
-                    //_battleModel = new BattleModel(_battleModel.Player, _battleModel.Monster);
-                    //OnAttackClicked();
+                    _battleModel.Monster.AcitveAuraParticle(true);
 
                     _viewModel.SetAttackButtonInteractable(false);
                     _viewModel.SetParryButtonInteractable(true);
@@ -298,14 +297,21 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
         switch (result.State)
         {
             case BattleState.Win:
+            {
                 _viewModel.SetTurnText("Win");
                 _viewModel.SetAttackButtonInteractable(false);
                 break;
-
+            }
             case BattleState.Lose:
+            {
                 _viewModel.SetTurnText("Lose");
                 _viewModel.SetAttackButtonInteractable(false);
                 break;
+            }
+            default:
+            {
+                break;
+            }
         }
     }
 
