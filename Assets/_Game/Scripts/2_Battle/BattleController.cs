@@ -91,6 +91,7 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
 
         _viewModel.SetTurnText("PLAYER TURN");
 
+        _viewModel.SetCommandUIVisible(true);
         _viewModel.SetAttackButtonInteractable(true);
         _viewModel.SetParryButtonInteractable(false);
 
@@ -181,6 +182,7 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
             attackerTeam,
             attacker,
             defender,
+            () => _viewModel.SetTurnUIVisible(false),
             () => ApplyAttackDamage(attackerTeam),
             OnTurnEnd);
     }
@@ -200,6 +202,9 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
     private BattleState OnTurnEnd()
     {
         BattleState battleState = _battleModel.State;
+
+        _viewModel.SetTurnUIVisible(true);
+        _viewModel.SetCommandUIVisible(true);
 
         switch (battleState)
         {
@@ -241,6 +246,7 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
             : _battleModel.MonsterAttack();
 
         RefreshBattleView();
+
         ApplyBattleResult(result);
 
         return result;
@@ -288,7 +294,8 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
 
     public void OnParrySucceeded()
     {
-        _viewModel.SetTurnText("P A R R Y");
+        _viewModel.SetCommandUIVisible(false);
+        _viewModel.SetTurnUIVisible(false);
     }
     #endregion
 

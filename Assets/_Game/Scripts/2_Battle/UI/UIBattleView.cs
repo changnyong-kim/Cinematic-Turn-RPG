@@ -1,3 +1,4 @@
+using DG.Tweening;
 using System;
 using TMPro;
 using UnityEngine;
@@ -5,6 +6,16 @@ using UnityEngine.UI;
 
 public sealed class UIBattleView : MonoBehaviour
 {
+    /// <summary>
+    /// 메인 ViewModel
+    /// </summary>
+    private BattleViewModel _viewModel;
+ 
+    /// <summary>
+    /// 클릭 이벤트
+    /// </summary>
+    public event Action OnAttackClicked, OnParryClicked;
+
     [Header("Turn Text Materials")]
     [SerializeField]
     private Material _normalTurnMaterial;
@@ -36,9 +47,22 @@ public sealed class UIBattleView : MonoBehaviour
     [SerializeField]
     private Button _attackButton, _parryButton;
 
-    private BattleViewModel _viewModel;
+    [Header("Canvas Group")]
+    [SerializeField]
+    private CanvasGroup _commandUICanvasGroup;
 
-    public event Action OnAttackClicked, OnParryClicked;
+    [SerializeField]
+    private CanvasGroup _turnUICanvasGroup;
+
+    [Header("Fade")]
+    [SerializeField]
+    private float _commandUIFadeDuration = 0.2f;
+
+    [SerializeField]
+    private float _turnUIFadeDuration = 0.15f;
+
+    private Tween _commandUITween;
+    private Tween _turnUITween;
 
     public void Bind(BattleViewModel viewModel)
     {
@@ -69,6 +93,12 @@ public sealed class UIBattleView : MonoBehaviour
         {
             _parryButton.onClick.AddListener(HandleParryButtonClicked);
         }
+
+        _viewModel.CommandUIVisible.OnValueChanged += SetCommandUIVisible;
+        _viewModel.TurnTextVisible.OnValueChanged += SetTurnUIVisible;
+
+        SetCommandUIVisible(_viewModel.CommandUIVisible.Value);
+        SetTurnUIVisible(_viewModel.TurnTextVisible.Value);
     }
 
     public void Unbind()
@@ -122,6 +152,36 @@ public sealed class UIBattleView : MonoBehaviour
             ApplyTurnTextMaterial(text);
         }
     }
+
+    /*
+    private void SetCommandUIVisible(bool visible)
+    {
+        if (_turnUICanvasGroup != null)
+        {
+            SetCanvasGroupVisible(_turnUICanvasGroup, visible);
+        }
+    }
+
+    private void SetTurnUIVisible(bool visible)
+    {
+        if (_turnUICanvasGroup != null)
+        {
+            SetCanvasGroupVisible(_turnUICanvasGroup, visible);
+        }
+    }
+
+    private void SetCanvasGroupVisible(CanvasGroup canvasGroup, bool visible)
+    {
+        if (canvasGroup == null)
+        {
+            return;
+        }
+
+        canvasGroup.alpha = visible ? 1f : 0f;
+        canvasGroup.interactable = visible;
+        canvasGroup.blocksRaycasts = visible;
+    }
+    */
 
     private void ApplyTurnTextMaterial(string text)
     {
@@ -194,4 +254,49 @@ public sealed class UIBattleView : MonoBehaviour
     {
         OnParryClicked?.Invoke();
     }
+
+    private void SetCommandUIVisible(bool visible)
+    {
+        _commandUITween?.Kill();
+
+        _commandUITween = visible
+            ? CanvasGroupTweenUtility.FadeIn(
+                _commandUICanvasGroup,
+                _commandUIFadeDuration,
+                Ease.OutQuad,
+                true)
+            : CanvasGroupTweenUtility.FadeOut(
+                _commandUICanvasGroup,
+                _commandUIFadeDuration,
+                Ease.InQuad,
+                true,
+                false);
+    }
+
+    private void SetTurnUIVisible(bool visible)
+    {
+        _turnUITween?.Kill();
+
+        _turnUITween = visible
+            ? CanvasGroupTweenUtility.FadeIn(
+                _turnUICanvasGroup,
+                _turnUIFadeDuration,
+                Ease.OutQuad,
+                false)
+            : CanvasGroupTweenUtility.FadeOut(
+                _turnUICanvasGroup,
+                _turnUIFadeDuration,
+                Ease.InQuad,
+                true,
+                false);
+    }
+
+    private void OnDestroy()
+    {
+        _commandUITween?.Kill();
+        _turnUITween?.Kill();
+
+        Unbind();
+    }
+
 }

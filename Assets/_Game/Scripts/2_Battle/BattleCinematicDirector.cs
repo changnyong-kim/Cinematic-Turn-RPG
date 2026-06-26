@@ -140,6 +140,7 @@ public sealed class BattleCinematicDirector : MonoBehaviour
     BattleTeam attackerTeam,
     ActorBase attacker,
     ActorBase defender,
+    Action onApproachEnd,
     Func<BattleResult> onImpact,
     Func<BattleState> onTurnEnd)
     {
@@ -161,6 +162,7 @@ public sealed class BattleCinematicDirector : MonoBehaviour
             approachDistance,
             moveDuration,
             returnDuration,
+            onApproachEnd,
             onImpact,
             onTurnEnd).Forget();
     }
@@ -217,6 +219,7 @@ public sealed class BattleCinematicDirector : MonoBehaviour
         float approachDistance,
         float moveDuration,
         float returnDuration,
+        Action onApproachEnd,
         Func<BattleResult> onImpact,
         Func<BattleState> onTurnEnd)
     {
@@ -254,6 +257,8 @@ public sealed class BattleCinematicDirector : MonoBehaviour
             _cameraRig?.PlayAttackCamera(_currentAttackerTeam, attacker, defender);
         }
         */
+
+        onApproachEnd?.Invoke();
 
         _cameraRig?.PlayAttackCamera(_currentAttackerTeam, attacker, defender);
 
