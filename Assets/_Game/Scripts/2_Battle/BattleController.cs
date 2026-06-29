@@ -23,7 +23,7 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
     [SerializeField]
     private UIBattleView _battleView;
 
-    private int _monsterSkillCount;
+    private int _monsterSkillSeqIdx;
     private readonly BattleViewModel _viewModel = new BattleViewModel();
     private BattleModel _battleModel;
 
@@ -219,11 +219,9 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
     /// <returns></returns>
     private BattleSkillTableData SelectMonsterSkill()
     {
-        _monsterSkillCount++;
+        _monsterSkillSeqIdx++;
 
-        BattleSkillId skillId = _monsterSkillCount % 2 == 0
-            ? BattleSkillId.MonsterStunAttack
-            : BattleSkillId.MonsterNormalAttack;
+        BattleSkillId skillId = (_monsterSkillSeqIdx % 2 == 0) ? BattleSkillId.MonsterStunAttack : BattleSkillId.MonsterNormalAttack;
 
         var skillData = TableManager.Instance.GetBattleSkill(skillId);
         //패링 불가 공격은 버튼 잠금
@@ -418,6 +416,7 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
     public void OnParryEnd()
     {
         BattleSkillTableData skillData = TableManager.Instance.GetBattleSkill(BattleSkillId.PlayerNormalAttack);
+        
         //패리 데미지 적용
         ApplySkill(BattleTeam.Ally, skillData);
 

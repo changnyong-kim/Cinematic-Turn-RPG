@@ -1,12 +1,21 @@
-using Cysharp.Threading.Tasks;
 using System;
+using System.Collections.Generic;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Playables;
-using UnityEngine.Rendering;
 
 public sealed class BattleCinematicDirector : MonoBehaviour
 {
+    private enum CinematicSequenceType
+    {
+        None = 0,
+        PlayerAttack,
+        MonsterAttack,
+        PlayerParryAttack,
+    }
+
     private readonly BattleActorMover _actorMover = new BattleActorMover();
+    private readonly Dictionary<CinematicSequenceType, int> _cinematicSequenceIndices = new();
 
     private IBattleCinematicEventHandler _eventHandler;
 
@@ -26,20 +35,21 @@ public sealed class BattleCinematicDirector : MonoBehaviour
     [Header("Timeline")]
     [SerializeField]
     private PlayableDirector _battleStartDirector;
+    
     [SerializeField]
-    private PlayableDirector _playerAttackDirector;
+    private PlayableDirector[] _playerAttackDirectors;
 
     [SerializeField]
-    private PlayableDirector _monsterAttackDirector;
+    private PlayableDirector[] _monsterAttackDirectors;
+
+    [SerializeField]
+    private PlayableDirector[] _playerParryAttackDirectors;
 
     [SerializeField]
     private PlayableDirector _playerHitDirector;
 
     [SerializeField]
     private PlayableDirector _monsterHitDirector;
-
-    [SerializeField]
-    private PlayableDirector _playerBlockImpactDirector;
 
     [Header("Track Names")]
     [SerializeField]
@@ -80,10 +90,29 @@ public sealed class BattleCinematicDirector : MonoBehaviour
 
     private bool _attackImpactHandled;
 
+    /// <summary>
+    /// 현재 재생중인 공격 타임라인
+    /// </summary>
+    [SerializeField]
+    PlayableDirector _currentAttackDirector;
+
     private BattleTeam _currentAttackerTeam;
     private ActorBase _attackActor, _defendActor;
     private Vector3 _attackerOriginPosition;
     private Quaternion _attackerOriginRotation;
+
+    private void BindAnimators(PlayableDirector[] directors, string trackName, ActorBase actor)
+    {
+        if (directors == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < directors.Length; i++)
+        {
+            BindAnimator(directors[i], trackName, actor);
+        }
+    }
 
     private void BindAnimator(PlayableDirector director, string trackName, ActorBase actor)
     {
@@ -122,11 +151,12 @@ public sealed class BattleCinematicDirector : MonoBehaviour
 
     public void BindActors(ActorBase player, ActorBase monster)
     {
-        BindAnimator(_playerAttackDirector, _playerAttackTrackName, player);
-        BindAnimator(_monsterAttackDirector, _monsterAttackTrackName, monster);
         BindAnimator(_playerHitDirector, _commonTrackName, player);
         BindAnimator(_monsterHitDirector, _commonTrackName, monster);
-        BindAnimator(_playerBlockImpactDirector, _commonTrackName, player);
+
+        BindAnimators(_playerAttackDirectors, _playerAttackTrackName, player);
+        BindAnimators(_monsterAttackDirectors, _monsterAttackTrackName, monster);
+        BindAnimators(_playerParryAttackDirectors, _commonTrackName, player);
     }
 
     #region 배틀 시작 연출
@@ -165,14 +195,14 @@ public sealed class BattleCinematicDirector : MonoBehaviour
     }
 
     public void PlayAttack(
-    BattleTeam attackerTeam,
-    ActorBase attacker,
-    ActorBase defender,
-    Action onApproachEnd,
-    Func<BattleResult> onImpact,
-    Func<BattleState> onTurnEnd)
+        BattleTeam attackerTeam,
+        ActorBase attacker,
+        ActorBase defender,
+        Action onApproachEnd,
+        Func<BattleResult> onImpact,
+        Func<BattleState> onTurnEnd)
     {
-        PlayableDirector attackDirector = GetAttackDirector(attackerTeam);
+        _currentAttackDirector = GetAttackDirector(attackerTeam);
         PlayableDirector hitDirector = GetDefenderHitDirector(attackerTeam);
         float approachDistance = GetApproachDistance(attackerTeam);
         float moveDuration = GetMoveDuration(attackerTeam);
@@ -185,7 +215,7 @@ public sealed class BattleCinematicDirector : MonoBehaviour
         PlayAttackAsync(
             attacker,
             defender,
-            attackDirector,
+            _currentAttackDirector,
             hitDirector,
             approachDistance,
             moveDuration,
@@ -196,11 +226,46 @@ public sealed class BattleCinematicDirector : MonoBehaviour
     }
 
     #region Get 유틸리티
+    private PlayableDirector GetNextDirector(CinematicSequenceType sequenceType, PlayableDirector[] directors)
+    {
+        if (directors == null || directors.Length == 0)
+        {
+            return null;
+        }
+
+        int sequenceIndex = 0;
+
+        if (_cinematicSequenceIndices.ContainsKey(sequenceType))
+        {
+            sequenceIndex = _cinematicSequenceIndices[sequenceType];
+        }
+
+        PlayableDirector selectedDirector = directors[sequenceIndex];
+
+        int nextIndex = sequenceIndex + 1;
+
+        if (nextIndex >= directors.Length)
+        {
+            nextIndex = 0;
+        }
+
+        _cinematicSequenceIndices[sequenceType] = nextIndex;
+
+        return selectedDirector;
+    }
+
     private PlayableDirector GetAttackDirector(BattleTeam attackerTeam)
     {
-        return attackerTeam == BattleTeam.Ally
-            ? _playerAttackDirector
-            : _monsterAttackDirector;
+        if (attackerTeam == BattleTeam.Ally)
+        {
+            return GetNextDirector(
+                CinematicSequenceType.PlayerAttack,
+                _playerAttackDirectors);
+        }
+
+        return GetNextDirector(
+            CinematicSequenceType.MonsterAttack,
+            _monsterAttackDirectors);
     }
 
     private PlayableDirector GetDefenderHitDirector(BattleTeam attackerTeam)
@@ -208,13 +273,6 @@ public sealed class BattleCinematicDirector : MonoBehaviour
         return attackerTeam == BattleTeam.Ally
             ? _monsterHitDirector
             : _playerHitDirector;
-    }
-
-    private PlayableDirector GetTeamHitDirector(BattleTeam targetTeam)
-    {
-        return targetTeam == BattleTeam.Ally
-            ? _playerHitDirector
-            : _monsterHitDirector;
     }
 
     private float GetApproachDistance(BattleTeam attackerTeam)
@@ -328,7 +386,11 @@ public sealed class BattleCinematicDirector : MonoBehaviour
                 _eventHandler.OnParrySucceeded();
 
                 ParryHitReactionAsync().Forget();
-                PlayDirector(_playerBlockImpactDirector);
+                
+                PlayableDirector parryAttackDirector = GetNextDirector(CinematicSequenceType.PlayerParryAttack, _playerParryAttackDirectors);
+
+                PlayDirector(parryAttackDirector);
+
                 break;
             }
             default:
@@ -338,6 +400,11 @@ public sealed class BattleCinematicDirector : MonoBehaviour
         }
 
         _attackImpactHandled = true;
+    }
+
+    public void OnAttackHitReactionSignal()
+    {
+        PlayDirector(_currentHitDirector);
     }
 
     public void OnAttackEndSignal()
@@ -381,8 +448,7 @@ public sealed class BattleCinematicDirector : MonoBehaviour
                 0.04f,
                 0.12f);
 
-        PlayableDirector attackDirector = GetAttackDirector(_currentAttackerTeam);
-        attackDirector.Stop();
+        _currentAttackDirector?.Stop();
 
         await HitStopAnim(100);
     }
@@ -437,6 +503,8 @@ public sealed class BattleCinematicDirector : MonoBehaviour
     #region 반격 시그널
     public async UniTask HitStopAnim(int stopTimeMs)
     {
+        Debug.LogWarning("HitStopAnimHitStopAnim!");
+
         _attackActor.ResumeAnimator();
 
         _attackActor.GetAnimator.speed = 1f;

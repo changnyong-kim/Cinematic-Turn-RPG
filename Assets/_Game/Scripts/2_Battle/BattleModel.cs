@@ -140,6 +140,7 @@ public sealed class BattleModel
         return new BattleResult(State);
     }
 
+
     #region 스킬데이터 처리
     public BattleResult UsePlayerSkill(BattleSkillTableData skillData)
     {
@@ -164,7 +165,11 @@ public sealed class BattleModel
             return new BattleResult(State);
         }
 
-        State = BattleState.MonsterTurn;
+        //패리 성공시 플레이어턴 반환
+        State = (_isParryRequested) ? BattleState.PlayerTurn : BattleState.MonsterTurn;
+        //-
+
+        ClearParryWindow();
 
         return new BattleResult(State);
     }
@@ -184,8 +189,7 @@ public sealed class BattleModel
         if (skillData.CanParry && _isParryRequested)
         {
             State = BattleState.PlayerTurn;
-            ClearParryWindow();
-
+            CloseParryWindow();
             return new BattleResult(State, DefenderReactionType.Parry);
         }
 
@@ -201,7 +205,7 @@ public sealed class BattleModel
         }
 
         State = BattleState.PlayerTurn;
-        ClearParryWindow();
+        //ClearParryWindow();
 
         return new BattleResult(State);
     }
