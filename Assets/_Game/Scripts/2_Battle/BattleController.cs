@@ -1,5 +1,6 @@
 using Cysharp.Threading.Tasks;
 using System.Collections.Generic;
+using Unity.Cinemachine;
 using UnityEngine;
 
 public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandler
@@ -14,6 +15,10 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
     [Header("Cinematic")]
     [SerializeField]
     private BattleCinematicDirector _cinematicDirector;
+
+    [SerializeField]
+    private CinemachineBrain _cinemachineBrain;
+
 
     [Header("UI")]
     [SerializeField]
@@ -74,8 +79,6 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
         {
             Debug.LogError("[BattleController] Battle start failed. Player or Monster is missing.");
             _viewModel.SetTurnText("Battle Start Failed");
-            _viewModel.SetAttackButtonInteractable(false);
-            _viewModel.SetParryButtonInteractable(false);
             return;
         }
 
@@ -87,13 +90,20 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
             _cinematicDirector.BindEventHandler(this);
         }
 
+        _viewModel.HideBattleUI(useFade: false);
         RefreshBattleView();
+
+        await _cinematicDirector.PlayBattleStartAsync();
 
         _viewModel.SetTurnText("PLAYER TURN");
 
-        _viewModel.SetCommandUIVisible(true);
+        _viewModel.ShowBattleUI(useFade: true);
+
         _viewModel.SetAttackButtonInteractable(true);
         _viewModel.SetParryButtonInteractable(false);
+
+        //카메라 제어권 반환
+        _cinemachineBrain.enabled = false;
 
         Debug.Log("[BattleController] Battle Start");
     }

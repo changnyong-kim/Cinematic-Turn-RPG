@@ -1,5 +1,63 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &25342059254802781
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1863540878604313798}
+  - component: {fileID: 7883703657857064644}
+  m_Layer: 0
+  m_Name: BattleStart
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1863540878604313798
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 25342059254802781}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 6722251090240681803}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!320 &7883703657857064644
+PlayableDirector:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 25342059254802781}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_PlayableAsset: {fileID: 11400000, guid: dc3bdb8a635b68d4494d11b26ec4dfc7, type: 2}
+  m_InitialState: 1
+  m_WrapMode: 0
+  m_DirectorUpdateMode: 1
+  m_InitialTime: 0
+  m_SceneBindings:
+  - key: {fileID: 4850898796601874288, guid: dc3bdb8a635b68d4494d11b26ec4dfc7, type: 2}
+    value: {fileID: 0}
+  - key: {fileID: -4319358003062847741, guid: dc3bdb8a635b68d4494d11b26ec4dfc7, type: 2}
+    value: {fileID: 0}
+  m_ExposedReferences:
+    m_References:
+    - 5f635c85ca7c14546b9cf9bd67f4a6f6: {fileID: 0}
+    - 429e227def6953d478b1b300b65a1e67: {fileID: 0}
+    - ece3394e4be2c584e96ecce3659a6bb1: {fileID: 0}
+    - ac9375d5393fcc44398535fbf89af402: {fileID: 0}
+    - 102697f1925876a4997abec99721c83e: {fileID: 0}
 --- !u!1 &773493782352454382
 GameObject:
   m_ObjectHideFlags: 0
@@ -135,6 +193,7 @@ Transform:
   - {fileID: 2227218483629555563}
   - {fileID: 8477349733047429178}
   - {fileID: 3462380689266327435}
+  - {fileID: 1863540878604313798}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2665541404602338967

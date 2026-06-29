@@ -255,11 +255,19 @@ public sealed class UIBattleView : MonoBehaviour
         OnParryClicked?.Invoke();
     }
 
-    private void SetCommandUIVisible(bool visible)
+    private void SetCommandUIVisible((bool visible, bool useFade) uiState)
     {
         _commandUITween?.Kill();
 
-        _commandUITween = visible
+        if(uiState.useFade == false)
+        {
+            _commandUICanvasGroup.gameObject.SetActive(uiState.visible);
+            return;
+        }
+
+        _commandUICanvasGroup.gameObject.SetActive(uiState.visible);
+
+        _commandUITween = uiState.visible
             ? CanvasGroupTweenUtility.FadeIn(
                 _commandUICanvasGroup,
                 _commandUIFadeDuration,
@@ -273,11 +281,19 @@ public sealed class UIBattleView : MonoBehaviour
                 false);
     }
 
-    private void SetTurnUIVisible(bool visible)
+    private void SetTurnUIVisible((bool visible, bool useFade) uiState)
     {
         _turnUITween?.Kill();
 
-        _turnUITween = visible
+        if (uiState.useFade == false)
+        {
+            _turnUICanvasGroup.gameObject.SetActive(uiState.visible);
+            return;
+        }
+
+        _turnUICanvasGroup.gameObject.SetActive(uiState.visible);
+
+        _turnUITween = uiState.visible
             ? CanvasGroupTweenUtility.FadeIn(
                 _turnUICanvasGroup,
                 _turnUIFadeDuration,

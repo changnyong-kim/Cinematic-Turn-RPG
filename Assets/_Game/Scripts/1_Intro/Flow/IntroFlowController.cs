@@ -1,7 +1,10 @@
 using Cysharp.Threading.Tasks;
+using System;
 using System.Collections.Generic;
+using UI;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
+using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 
 namespace Intro.Flow
@@ -104,8 +107,46 @@ namespace Intro.Flow
                 return;
             }
 
-            await EnterNextSceneAsync();
+            _introScreen.Init(
+                onStart: () => EnterNextSceneAsync().Forget(),
+                () => { },
+                onQuit: QuitApplication);
         }
+
+        #region 유저 입력
+        public void Update()
+        {
+            if (Keyboard.current == null)
+            {
+                return;
+            }
+
+            if (Keyboard.current.wKey.wasReleasedThisFrame ||
+                Keyboard.current.upArrowKey.wasReleasedThisFrame)
+            {
+                _introScreen.MenuSelector.MoveUp();
+            }
+
+            if (Keyboard.current.sKey.wasReleasedThisFrame ||
+                Keyboard.current.downArrowKey.wasReleasedThisFrame)
+            {
+                _introScreen.MenuSelector.MoveDown();
+            }
+
+            if (Keyboard.current.enterKey.wasReleasedThisFrame ||
+                Keyboard.current.numpadEnterKey.wasReleasedThisFrame)
+            {
+                _introScreen.MenuSelector.Confirm();
+            }
+
+            if (Keyboard.current.escapeKey.wasReleasedThisFrame &&
+                _introScreen.IsShowIntroduce)
+            {
+                _introScreen.CloseIntroduceAsync().Forget();
+            }
+        }
+        #endregion
+
 
         private bool LoadTables()
         {
@@ -162,6 +203,8 @@ namespace Intro.Flow
 
         private async UniTask EnterNextSceneAsync()
         {
+            await UniTask.Delay(System.TimeSpan.FromSeconds(1));
+
             await SceneManager.LoadSceneAsync("1_Game").ToUniTask();
         }
 

@@ -15,6 +15,8 @@ public sealed class BattleCinematicDirector : MonoBehaviour
         _eventHandler = eventHandler;
     }
 
+    private UniTaskCompletionSource _battleStartCompletionSource;
+
     /// <summary>
     /// 현재 피격 '당하는' 대상
     /// </summary>
@@ -22,6 +24,8 @@ public sealed class BattleCinematicDirector : MonoBehaviour
     private float _currentReturnDuration;
 
     [Header("Timeline")]
+    [SerializeField]
+    private PlayableDirector _battleStartDirector;
     [SerializeField]
     private PlayableDirector _playerAttackDirector;
 
@@ -124,6 +128,30 @@ public sealed class BattleCinematicDirector : MonoBehaviour
         BindAnimator(_monsterHitDirector, _commonTrackName, monster);
         BindAnimator(_playerBlockImpactDirector, _commonTrackName, player);
     }
+
+    #region 배틀 시작 연출
+    public async UniTask PlayBattleStartAsync()
+    {
+        if (_battleStartDirector == null)
+        {
+            return;
+        }
+
+        _battleStartCompletionSource = new UniTaskCompletionSource();
+
+        _battleStartDirector.time = 0;
+        _battleStartDirector.Evaluate();
+        _battleStartDirector.Play();
+
+        await _battleStartCompletionSource.Task;
+    }
+
+    public void OnBattleStartEndSignal()
+    {
+        _battleStartCompletionSource?.TrySetResult();
+        _battleStartCompletionSource = null;
+    }
+    #endregion
 
     private void PlayDirector(PlayableDirector director)
     {
