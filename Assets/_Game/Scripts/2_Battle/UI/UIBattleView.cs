@@ -39,7 +39,7 @@ public sealed class UIBattleView : MonoBehaviour
     private Image _monsterHpImg;
 
     [SerializeField]
-    private TextMeshProUGUI _turnText;
+    private TextMeshProUGUI _turnText, _skillNotiText;
 
     [SerializeField]
     private GameObject _playerTrunBar, _monsterTrunBar;
@@ -73,6 +73,7 @@ public sealed class UIBattleView : MonoBehaviour
         _viewModel.PlayerHpText.OnValueChanged += SetPlayerHpText;
         _viewModel.MonsterHpText.OnValueChanged += SetMonsterHpText;
         _viewModel.TurnText.OnValueChanged += SetTurnText;
+        _viewModel.SkillNotiText.OnValueChanged += SkillNotiText;
 
         _viewModel.AttackButtonInteractable.OnValueChanged += SetAttackButtonInteractable;
         _viewModel.ParryButtonInteractable.OnValueChanged += SetParryButtonInteractable;
@@ -96,9 +97,6 @@ public sealed class UIBattleView : MonoBehaviour
 
         _viewModel.CommandUIVisible.OnValueChanged += SetCommandUIVisible;
         _viewModel.TurnTextVisible.OnValueChanged += SetTurnUIVisible;
-
-        SetCommandUIVisible(_viewModel.CommandUIVisible.Value);
-        SetTurnUIVisible(_viewModel.TurnTextVisible.Value);
     }
 
     public void Unbind()
@@ -153,35 +151,13 @@ public sealed class UIBattleView : MonoBehaviour
         }
     }
 
-    /*
-    private void SetCommandUIVisible(bool visible)
+    private void SkillNotiText(string text)
     {
-        if (_turnUICanvasGroup != null)
+        if (_skillNotiText != null)
         {
-            SetCanvasGroupVisible(_turnUICanvasGroup, visible);
+            _skillNotiText.text = text;
         }
     }
-
-    private void SetTurnUIVisible(bool visible)
-    {
-        if (_turnUICanvasGroup != null)
-        {
-            SetCanvasGroupVisible(_turnUICanvasGroup, visible);
-        }
-    }
-
-    private void SetCanvasGroupVisible(CanvasGroup canvasGroup, bool visible)
-    {
-        if (canvasGroup == null)
-        {
-            return;
-        }
-
-        canvasGroup.alpha = visible ? 1f : 0f;
-        canvasGroup.interactable = visible;
-        canvasGroup.blocksRaycasts = visible;
-    }
-    */
 
     private void ApplyTurnTextMaterial(string text)
     {
@@ -190,17 +166,24 @@ public sealed class UIBattleView : MonoBehaviour
             return;
         }
 
-        if (text == "Player Turn" || text == "PLAYER TURN")
+        if (string.IsNullOrEmpty(text))
+        {
+            _turnText.text = string.Empty;
+            _turnText.fontSharedMaterial = _normalTurnMaterial;
+            return;
+        }
+
+        if (IsSameTurnText(text, "Player Turn"))
         {
             _turnText.text = "PLAYER TURN";
             _turnText.fontSharedMaterial = _playerTurnMaterial;
 
             TurnBarSetting(true);
-            
+
             return;
         }
 
-        if (text == "Monster Attack" || text == "MONSTER ATTACK")
+        if (IsSameTurnText(text, "Monster Attack"))
         {
             _turnText.text = "MONSTER ATTACK";
             _turnText.fontSharedMaterial = _monsterTurnMaterial;
@@ -210,9 +193,19 @@ public sealed class UIBattleView : MonoBehaviour
             return;
         }
 
-        if (text == "Parry Success" || text == "P A R R Y")
+        if (IsSameTurnText(text, "Player Stunned"))
         {
-            _turnText.text = "P A R R Y";
+            _turnText.text = "PLAYER STUNNED";
+            _turnText.fontSharedMaterial = _monsterTurnMaterial;
+
+            TurnBarSetting(false);
+
+            return;
+        }
+
+        if (IsSameTurnText(text, "Monster Stunned"))
+        {
+            _turnText.text = "MONSTER STUNNED";
             _turnText.fontSharedMaterial = _playerTurnMaterial;
 
             TurnBarSetting(true);
@@ -220,7 +213,18 @@ public sealed class UIBattleView : MonoBehaviour
             return;
         }
 
+        TurnBarSetting(true);
+
+        _turnText.text = text.ToUpperInvariant();
         _turnText.fontSharedMaterial = _normalTurnMaterial;
+    }
+
+    private bool IsSameTurnText(string source, string target)
+    {
+        return string.Equals(
+            source,
+            target,
+            StringComparison.OrdinalIgnoreCase);
     }
 
     private void TurnBarSetting(bool isPlayerState)
@@ -314,5 +318,4 @@ public sealed class UIBattleView : MonoBehaviour
 
         Unbind();
     }
-
 }

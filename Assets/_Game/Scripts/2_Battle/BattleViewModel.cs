@@ -2,7 +2,9 @@ public sealed class BattleViewModel
 {
     public ObservableValue<(float, string)> PlayerHpText { get; } = new ObservableValue<(float, string)>();
     public ObservableValue<(float, string)> MonsterHpText { get; } = new ObservableValue<(float, string)>();
-    public ObservableValue<string> TurnText { get; } = new ObservableValue<string>("Ready");
+    public ObservableValue<string> TurnText { get; } = new ObservableValue<string>("");
+
+    public ObservableValue<string> SkillNotiText { get; } = new ObservableValue<string>("");
 
     public ObservableValue<(bool Visible, bool UseFade)> CommandUIVisible { get; } = new ObservableValue<(bool Visible, bool UseFade)>((true, true));
 
@@ -28,6 +30,11 @@ public sealed class BattleViewModel
     public void SetTurnText(string text)
     {
         TurnText.SetValue(text);
+    }
+
+    public void SetSkillNotiText(string text)
+    {
+        SkillNotiText.SetValue(text);
     }
 
     public void SetAttackButtonInteractable(bool isInteractable)

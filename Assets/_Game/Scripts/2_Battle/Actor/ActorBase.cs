@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public abstract class ActorBase : MonoBehaviour
@@ -5,10 +6,9 @@ public abstract class ActorBase : MonoBehaviour
     private static readonly int IsBlockingHash = Animator.StringToHash("IsBlocking");
     private static readonly int IdleHash = Animator.StringToHash("Idle");
 
-    private static readonly int AttackTrigger = Animator.StringToHash("Attack");
-    private static readonly int HitTrigger = Animator.StringToHash("Hit");
-    private static readonly int DodgeTrigger = Animator.StringToHash("Dodge");
-    private static readonly int DeadTrigger = Animator.StringToHash("Dead");
+    private static readonly int StunedHash = Animator.StringToHash("Stuned");
+    private static readonly int DeadHash = Animator.StringToHash("Die");
+
 
     [SerializeField]
     private Animator _animator;
@@ -16,9 +16,12 @@ public abstract class ActorBase : MonoBehaviour
     [SerializeField]
     private GameObject _auraParticleGob;
 
+
     protected int _maxHp;
     protected int _currentHp;
     private int _attackPower;
+
+    private readonly HashSet<ActorStatusType> _statusSet = new();
 
     public int MaxHp => _maxHp;
     public int CurrentHp => _currentHp;
@@ -34,6 +37,8 @@ public abstract class ActorBase : MonoBehaviour
         _maxHp = data.MaxHp;
         _currentHp = _maxHp;
         _attackPower = data.Attack;
+
+        _statusSet.Clear();
 
         if (_animator == null)
         {
@@ -62,30 +67,46 @@ public abstract class ActorBase : MonoBehaviour
             Die();
             return;
         }
-
-        //PlayHit();
     }
 
-    public virtual void Attack(ActorBase target)
+    public void AddStatus(ActorStatusType statusType)
     {
-        AcitveAuraParticle(false);
-
-        if (target == null || target.IsDead)
+        if (statusType == ActorStatusType.None)
         {
             return;
         }
 
-        target.TakeDamage(_attackPower);
+        _statusSet.Add(statusType);
     }
 
-    public virtual void PlayHit()
+    public void RemoveStatus(ActorStatusType statusType)
     {
-        SetTrigger(HitTrigger);
+        if (statusType == ActorStatusType.None)
+        {
+            return;
+        }
+
+        _statusSet.Remove(statusType);
+    }
+
+    public bool HasStatus(ActorStatusType statusType)
+    {
+        if (statusType == ActorStatusType.None)
+        {
+            return false;
+        }
+
+        return _statusSet.Contains(statusType);
     }
 
     protected virtual void Die()
     {
-        GetAnimator.CrossFade("Die", 0.1f);
+        GetAnimator.CrossFade(DeadHash, 0.1f);
+    }
+
+    public virtual void Stunded()
+    {
+        GetAnimator.CrossFade(StunedHash, 0.1f);
     }
 
     public void SetBlocking(bool isBlocking)

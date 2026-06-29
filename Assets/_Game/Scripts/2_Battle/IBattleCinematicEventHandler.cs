@@ -4,4 +4,6 @@ public interface IBattleCinematicEventHandler
     void OnParryWindowClosed();
 
     void OnParrySucceeded ();
+
+    void OnParryEnd();
 }

@@ -279,13 +279,6 @@ public sealed class BattleCinematicDirector : MonoBehaviour
             approachDistance,
             moveDuration);
 
-        /*
-        if (_currentAttackerTeam == BattleTeam.Ally)
-        {
-            _cameraRig?.PlayAttackCamera(_currentAttackerTeam, attacker, defender);
-        }
-        */
-
         onApproachEnd?.Invoke();
 
         _cameraRig?.PlayAttackCamera(_currentAttackerTeam, attacker, defender);
@@ -328,7 +321,6 @@ public sealed class BattleCinematicDirector : MonoBehaviour
             case DefenderReactionType.Parry:
             {
                 _cameraRig?.PlayParrySuccessCamera(_defendActor, _attackActor);
-                //_cameraRig?.PlayAttackCamera(_currentAttackerTeam,  _attackActor, _defendActor);
 
                 LookAtTargetFlat(_attackActor, _defendActor);
                 LookAtTargetFlat(_defendActor, _attackActor);
@@ -415,6 +407,7 @@ public sealed class BattleCinematicDirector : MonoBehaviour
     }
     #endregion
 
+
     #region 패링 판정 시그널
     // 1. 패링 가능 구간 시작
     public void OnParryEnableSignal()
@@ -476,8 +469,6 @@ public sealed class BattleCinematicDirector : MonoBehaviour
             _counterZoomAmount,
             _counterZoomInDuration,
             _counterZoomOutDuration);
-
-        //PlayParryImpactEffect(_parryBlockEffectPrefab, _attackActor.transform, false);
     }
 
     public void OnParryEndSignal()
@@ -485,10 +476,10 @@ public sealed class BattleCinematicDirector : MonoBehaviour
         _attackActor.ResumeAnimator();
         _defendActor.ForceIdle();
 
-        OnParryEndAsync().Forget();
+        _eventHandler.OnParryEnd();
     }
 
-    private async UniTask OnParryEndAsync()
+    public async UniTask OnParryEndAsync()
     {
         await _actorMover.ReturnAsync(
            _attackActor.GetAnimator,
@@ -498,7 +489,6 @@ public sealed class BattleCinematicDirector : MonoBehaviour
 
         // 최종 보정
         _attackActor.transform.SetPositionAndRotation(_attackerOriginPosition, _attackerOriginRotation);
-        
         _cameraRig?.ReturnToBase();
 
         if (_onTurnEnd != null)

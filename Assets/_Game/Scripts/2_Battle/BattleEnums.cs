@@ -38,3 +38,19 @@ public enum BattleEffectType
     Parry,
     PerpectParry
 }
+
+public enum ActorStatusType
+{
+    None = 0,
+    Stun = 1,
+}
+
+public enum BattleSkillId
+{
+    None = 0,
+
+    PlayerNormalAttack = 100,
+
+    MonsterNormalAttack = 200,
+    MonsterStunAttack = 201,
+}

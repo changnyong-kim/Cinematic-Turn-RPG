@@ -13,8 +13,7 @@ MonoBehaviour:
   m_Name: LoadConfigSO
   m_EditorClassIdentifier: Assembly-CSharp::LoadConfig
   _actorTablePath: Data/ActorTable.json
-  _skillTablePath: Data/SkillTable.json
+  _skillTablePath: Data/BattleSkillTable.json
   _actorLabel: 
   _skillLabel: 
   _backgroundLabel: 
-  _propLabel: 

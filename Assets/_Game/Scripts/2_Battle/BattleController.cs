@@ -19,13 +19,14 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
     [SerializeField]
     private CinemachineBrain _cinemachineBrain;
 
-
     [Header("UI")]
     [SerializeField]
     private UIBattleView _battleView;
 
+    private int _monsterSkillCount;
     private readonly BattleViewModel _viewModel = new BattleViewModel();
     private BattleModel _battleModel;
+
 
     private void Awake()
     {
@@ -157,12 +158,13 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
 
         _viewModel.SetAttackButtonInteractable(false);
 
-        PlayAttackSequence(BattleTeam.Ally);
+        BattleSkillTableData skillData = TableManager.Instance.GetBattleSkill(BattleSkillId.PlayerNormalAttack);
+        PlaySkillSequence(BattleTeam.Ally, skillData);
     }
 
     public void OnParryInput()
     {
-        if (_battleModel == null && _battleModel.CanRequestParry == false)
+        if (_battleModel == null || _battleModel.CanRequestParry == false)
         {
             return;
         }
@@ -173,10 +175,9 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
     }
     #endregion
 
-
-    private void PlayAttackSequence(BattleTeam attackerTeam)
+    private void PlaySkillSequence(BattleTeam attackerTeam, BattleSkillTableData skillData)
     {
-        if (_battleModel == null || _cinematicDirector == null)
+        if (_battleModel == null || _cinematicDirector == null || skillData == null)
         {
             return;
         }
@@ -188,12 +189,15 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
             ? "PLAYER ATTACK"
             : "MONSTER ATTACK");
 
+
+        _viewModel.SetSkillNotiText(skillData.NoticeText);
+
         _cinematicDirector.PlayAttack(
             attackerTeam,
             attacker,
             defender,
             () => _viewModel.SetTurnUIVisible(false),
-            () => ApplyAttackDamage(attackerTeam),
+            () => ApplySkill(attackerTeam, skillData),
             OnTurnEnd);
     }
 
@@ -206,54 +210,157 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
 
         _battleModel.Player.SetBlocking(true);
 
-        PlayAttackSequence(BattleTeam.Enemy);
+        PlaySkillSequence(BattleTeam.Enemy, SelectMonsterSkill());
+    }
+
+    /// <summary>
+    /// 몬스터 공격 스킬 선택, 현재는 2번쨰 공격마다 BattleSkillId : MonsterStunAttack 사용
+    /// </summary>
+    /// <returns></returns>
+    private BattleSkillTableData SelectMonsterSkill()
+    {
+        _monsterSkillCount++;
+
+        BattleSkillId skillId = _monsterSkillCount % 2 == 0
+            ? BattleSkillId.MonsterStunAttack
+            : BattleSkillId.MonsterNormalAttack;
+
+        var skillData = TableManager.Instance.GetBattleSkill(skillId);
+        //패링 불가 공격은 버튼 잠금
+        _viewModel.ParryButtonInteractable.SetValue(skillData.CanParry);
+
+        return skillData;
     }
 
     private BattleState OnTurnEnd()
     {
-        BattleState battleState = _battleModel.State;
+        OnTurnEndAsync().Forget(Debug.LogException);
+
+        if (_battleModel == null)
+        {
+            return BattleState.None;
+        }
+
+        return _battleModel.State;
+    }
+
+    private async UniTask OnTurnEndAsync()
+    {
+        if (_battleModel == null)
+        {
+            return;
+        }
+
+        BattleResult turnStartResult = _battleModel.ResolveTurnStart();
 
         _viewModel.SetTurnUIVisible(true);
         _viewModel.SetCommandUIVisible(true);
 
+        if (turnStartResult.IsStatusSkipped)
+        {
+            await ApplyStatusSkipResultAsync(turnStartResult);
+            return;
+        }
+
+        ApplyTurnState(_battleModel.State);
+    }
+
+    private async UniTask ApplyStatusSkipResultAsync(BattleResult result)
+    {
+        switch (result.SkippedStatusType)
+        {
+            case ActorStatusType.Stun:
+            {
+                await ApplyStunSkipResultAsync(result);
+                break;
+            }
+
+            default:
+            {
+                ApplyTurnState(result.State);
+                break;
+            }
+        }
+    }
+
+    private async UniTask ApplyStunSkipResultAsync(BattleResult result)
+    {
+        _viewModel.SetAttackButtonInteractable(false);
+        _viewModel.SetParryButtonInteractable(false);
+
+        if (result.State == BattleState.PlayerTurn)
+        {
+            _viewModel.SetTurnText("Monster Stunned");
+
+            _battleModel.Player.SetBlocking(false);
+            _battleModel.Monster.Stunded();
+            _battleModel.Monster.AcitveAuraParticle(false);
+
+            //임시로 4초 대기, 연출 필요시 여기서 추가
+            await UniTask.Delay(3000);
+
+            ApplyTurnState(result.State);
+            return;
+        }
+
+        if (result.State == BattleState.MonsterTurn)
+        {
+            _viewModel.SetTurnText("Player Stunned");
+
+            _battleModel.Player.SetBlocking(false);
+            _battleModel.Player.Stunded();
+            _battleModel.Monster.AcitveAuraParticle(true);
+
+            //임시로 4초 대기, 연출 필요시 여기서 추가
+            await UniTask.Delay(3000);
+
+            _battleModel.Player.ForceIdle();
+
+            ApplyTurnState(result.State);
+            return;
+        }
+
+        ApplyTurnState(result.State);
+    }
+
+    private void ApplyTurnState(BattleState battleState)
+    {
         switch (battleState)
         {
             case BattleState.PlayerTurn:
-                {
-                    _viewModel.SetTurnText("Player Turn");
+            {
+                _viewModel.SetTurnText("Player Turn");
 
-                    _battleModel.Player.SetBlocking(false);
-                    _battleModel.Monster.AcitveAuraParticle(true);
+                _battleModel.Player.SetBlocking(false);
+                _battleModel.Monster.AcitveAuraParticle(true);
 
-                    _viewModel.SetAttackButtonInteractable(true);
-                    _viewModel.SetParryButtonInteractable(false);
+                _viewModel.SetAttackButtonInteractable(true);
+                _viewModel.SetParryButtonInteractable(false);
 
-                    break;
-                }
-            case BattleState.MonsterTurn:
-                {
-                    _battleModel.Monster.AcitveAuraParticle(true);
-
-                    _viewModel.SetAttackButtonInteractable(false);
-                    _viewModel.SetParryButtonInteractable(true);
-
-                    ExecuteMonsterTurn();
                 break;
-                }
-            default:
-                {
-                    break;
-                }
-        }
+            }
+            case BattleState.MonsterTurn:
+            {
+                _battleModel.Monster.AcitveAuraParticle(true);
 
-        return battleState;
+                _viewModel.SetAttackButtonInteractable(false);
+                _viewModel.SetParryButtonInteractable(true);
+
+                ExecuteMonsterTurn();
+                break;
+            }
+            default:
+            {
+                break;
+            }
+        }
     }
 
-    private BattleResult ApplyAttackDamage(BattleTeam attackerTeam)
+    private BattleResult ApplySkill(BattleTeam attackerTeam, BattleSkillTableData skillData)
     {
         BattleResult result = attackerTeam == BattleTeam.Ally
-            ? _battleModel.PlayerAttack()
-            : _battleModel.MonsterAttack();
+            ? _battleModel.UsePlayerSkill(skillData)
+            : _battleModel.UseMonsterSkill(skillData);
 
         RefreshBattleView();
 
@@ -307,6 +414,21 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
         _viewModel.SetCommandUIVisible(false);
         _viewModel.SetTurnUIVisible(false);
     }
+
+    public void OnParryEnd()
+    {
+        BattleSkillTableData skillData = TableManager.Instance.GetBattleSkill(BattleSkillId.PlayerNormalAttack);
+        //패리 데미지 적용
+        ApplySkill(BattleTeam.Ally, skillData);
+
+        RefreshBattleView();
+
+        if (_battleModel.State != BattleState.Win)
+        {
+            //적 전장 복귀
+           _cinematicDirector.OnParryEndAsync().Forget();
+        }
+    }
     #endregion
 
     private void ApplyBattleResult(BattleResult result)
@@ -316,12 +438,14 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
             case BattleState.Win:
             {
                 _viewModel.SetTurnText("Win");
+                _viewModel.SetTurnUIVisible(true);
                 _viewModel.SetAttackButtonInteractable(false);
                 break;
             }
             case BattleState.Lose:
             {
                 _viewModel.SetTurnText("Lose");
+                _viewModel.SetTurnUIVisible(true);
                 _viewModel.SetAttackButtonInteractable(false);
                 break;
             }

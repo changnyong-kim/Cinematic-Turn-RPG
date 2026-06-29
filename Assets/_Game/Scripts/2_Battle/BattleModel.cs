@@ -1,3 +1,5 @@
+using UnityEngine;
+
 public readonly struct BattleResult
 {
     public static BattleResult None => default;
@@ -12,12 +14,28 @@ public readonly struct BattleResult
         get;
     }
 
+    public bool IsStatusSkipped
+    {
+        get;
+    }
+
+    public ActorStatusType SkippedStatusType
+    {
+        get;
+    }
+
     public bool IsFinished => State == BattleState.Win || State == BattleState.Lose;
 
-    public BattleResult( BattleState state, DefenderReactionType reactionType = DefenderReactionType.Hit)
+    public BattleResult(
+        BattleState state,
+        DefenderReactionType reactionType = DefenderReactionType.Hit,
+        bool isStatusSkipped = false,
+        ActorStatusType skippedStatusType = ActorStatusType.None)
     {
         State = state;
         ReactionType = reactionType;
+        IsStatusSkipped = isStatusSkipped;
+        SkippedStatusType = skippedStatusType;
     }
 }
 
@@ -43,16 +61,18 @@ public sealed class BattleModel
         Player != null &&
         Monster != null &&
         Player.IsDead == false &&
-        Monster.IsDead == false;
+        Monster.IsDead == false &&
+        Player.HasStatus(ActorStatusType.Stun) == false;
 
     public bool CanMonsterAct =>
         State == BattleState.MonsterTurn &&
         Player != null &&
         Monster != null &&
         Player.IsDead == false &&
-        Monster.IsDead == false;
+        Monster.IsDead == false &&
+        Monster.HasStatus(ActorStatusType.Stun) == false;
 
-    #region Parry
+    #region 패링 필드
     private bool _isParryWindowOpen;
     private bool _isParryRequested;
 
@@ -66,6 +86,7 @@ public sealed class BattleModel
         Monster.IsDead == false;
     #endregion
 
+
     public BattleModel(ActorBase player, ActorBase monster)
     {
         Player = player;
@@ -73,14 +94,67 @@ public sealed class BattleModel
         State = BattleState.PlayerTurn;
     }
 
-    public BattleResult PlayerAttack()
+    /// <summary>
+    /// 턴 시작 시 상태 이상으로 인해 행동이 스킵되는지 판정한다.
+    /// 현재는 Stun만 처리한다.
+    /// </summary>
+    public BattleResult ResolveTurnStart()
+    {
+        switch (State)
+        {
+            case BattleState.PlayerTurn:
+            {
+                return ResolveActorTurnStart(Player, BattleState.MonsterTurn);
+            }
+
+            case BattleState.MonsterTurn:
+            {
+                return ResolveActorTurnStart(Monster, BattleState.PlayerTurn);
+            }
+
+            default:
+            {
+                return new BattleResult(State);
+            }
+        }
+    }
+
+    private BattleResult ResolveActorTurnStart(ActorBase actor, BattleState nextState)
+    {
+        if (actor == null || actor.IsDead)
+        {
+            return new BattleResult(State);
+        }
+
+        if (actor.HasStatus(ActorStatusType.Stun))
+        {
+            actor.RemoveStatus(ActorStatusType.Stun);
+            State = nextState;
+
+            return new BattleResult(
+                State,
+                isStatusSkipped: true,
+                skippedStatusType: ActorStatusType.Stun);
+        }
+
+        return new BattleResult(State);
+    }
+
+    #region 스킬데이터 처리
+    public BattleResult UsePlayerSkill(BattleSkillTableData skillData)
     {
         if (CanPlayerAct == false)
         {
             return new BattleResult(State);
         }
 
-        Player.Attack(Monster);
+        if (skillData == null)
+        {
+            return new BattleResult(State);
+        }
+
+        ApplySkillDamage(Player, Monster, skillData);
+        ApplySkillStatus(Monster, skillData);
 
         if (Monster.IsDead)
         {
@@ -91,18 +165,23 @@ public sealed class BattleModel
         }
 
         State = BattleState.MonsterTurn;
-        
+
         return new BattleResult(State);
     }
 
-    public BattleResult MonsterAttack()
+    public BattleResult UseMonsterSkill(BattleSkillTableData skillData)
     {
         if (CanMonsterAct == false)
         {
             return new BattleResult(State);
         }
 
-        if (_isParryRequested)
+        if (skillData == null)
+        {
+            return new BattleResult(State);
+        }
+
+        if (skillData.CanParry && _isParryRequested)
         {
             State = BattleState.PlayerTurn;
             ClearParryWindow();
@@ -110,7 +189,8 @@ public sealed class BattleModel
             return new BattleResult(State, DefenderReactionType.Parry);
         }
 
-        Monster.Attack(Player);
+        ApplySkillDamage(Monster, Player, skillData);
+        ApplySkillStatus(Player, skillData);
 
         if (Player.IsDead)
         {
@@ -126,6 +206,35 @@ public sealed class BattleModel
         return new BattleResult(State);
     }
 
+    private void ApplySkillDamage(ActorBase attacker, ActorBase defender, BattleSkillTableData skillData)
+    {
+        if (attacker == null || defender == null || skillData == null)
+        {
+            return;
+        }
+
+        int damage = Mathf.RoundToInt(attacker.AttackPower * skillData.PowerRate);
+        defender.TakeDamage(damage);
+    }
+
+    private void ApplySkillStatus(ActorBase target, BattleSkillTableData skillData)
+    {
+        if (target == null || skillData == null)
+        {
+            return;
+        }
+
+        if (skillData.ApplyStatus == ActorStatusType.None)
+        {
+            return;
+        }
+
+        target.AddStatus(skillData.ApplyStatus);
+    }
+    #endregion
+
+
+    #region 패링
     public void OpenParryWindow()
     {
         if (State != BattleState.MonsterTurn)
@@ -167,4 +276,5 @@ public sealed class BattleModel
         _isParryWindowOpen = false;
         _isParryRequested = false;
     }
+    #endregion
 }
