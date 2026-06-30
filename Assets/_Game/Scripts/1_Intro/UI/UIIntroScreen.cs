@@ -119,6 +119,8 @@ namespace UI
 
             _isTransitioning = true;
 
+            AudioManager.Instance.PlaySfx(AudioCueId.PageChange);
+
             if (_skyboxController != null)
             {
                 await _skyboxController.ChangeToIntroduceSkyboxAsync();
@@ -136,6 +138,8 @@ namespace UI
         public async UniTask CloseIntroduceAsync()
         {
             _isTransitioning = true;
+
+            AudioManager.Instance.PlaySfx(AudioCueId.PageChange);
 
             if (_skyboxController != null)
             {

@@ -109,6 +109,7 @@ public sealed class UIBattleView : MonoBehaviour
 
             _viewModel.AttackButtonInteractable.OnValueChanged -= SetAttackButtonInteractable;
             _viewModel.ParryButtonInteractable.OnValueChanged -= SetParryButtonInteractable;
+
             _viewModel = null;
         }
 
@@ -175,6 +176,8 @@ public sealed class UIBattleView : MonoBehaviour
 
         if (IsSameTurnText(text, "Player Turn"))
         {
+            AudioManager.Instance.PlaySfx(AudioCueId.TurnChange);
+
             _turnText.text = "PLAYER TURN";
             _turnText.fontSharedMaterial = _playerTurnMaterial;
 
@@ -185,6 +188,8 @@ public sealed class UIBattleView : MonoBehaviour
 
         if (IsSameTurnText(text, "Monster Attack"))
         {
+            AudioManager.Instance.PlaySfx(AudioCueId.TurnChange);
+
             _turnText.text = "MONSTER ATTACK";
             _turnText.fontSharedMaterial = _monsterTurnMaterial;
 

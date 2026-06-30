@@ -62,9 +62,44 @@ namespace Intro.Flow
             _platformStrategy = CreatePlatformStrategy();
         }
 
+        #region 유저 입력
+        public void Update()
+        {
+            if (Keyboard.current == null)
+            {
+                return;
+            }
+
+            if (Keyboard.current.wKey.wasReleasedThisFrame ||
+                Keyboard.current.upArrowKey.wasReleasedThisFrame)
+            {
+                _introScreen.MenuSelector.MoveUp();
+            }
+
+            if (Keyboard.current.sKey.wasReleasedThisFrame ||
+                Keyboard.current.downArrowKey.wasReleasedThisFrame)
+            {
+                _introScreen.MenuSelector.MoveDown();
+            }
+
+            if (Keyboard.current.enterKey.wasReleasedThisFrame ||
+                Keyboard.current.numpadEnterKey.wasReleasedThisFrame)
+            {
+                _introScreen.MenuSelector.Confirm();
+            }
+
+            if (Keyboard.current.escapeKey.wasReleasedThisFrame &&
+                _introScreen.IsShowIntroduce)
+            {
+                _introScreen.CloseIntroduceAsync().Forget();
+            }
+        }
+        #endregion
+
         private void Start()
         {
             StartBootFlowAsync().Forget(Debug.LogException);
+            AudioManager.Instance.PlayBgm(AudioCueId.IntroBgm);
         }
 
         private IntroPlatformBase CreatePlatformStrategy()
@@ -108,45 +143,14 @@ namespace Intro.Flow
             }
 
             _introScreen.Init(
-                onStart: () => EnterNextSceneAsync().Forget(),
+                onStart: () =>
+                {
+                    AudioManager.Instance.ChangeBgmAsync(AudioCueId.BattleBgm, 1f).Forget();
+                    EnterNextSceneAsync().Forget();
+                },
                 () => { },
                 onQuit: QuitApplication);
         }
-
-        #region 유저 입력
-        public void Update()
-        {
-            if (Keyboard.current == null)
-            {
-                return;
-            }
-
-            if (Keyboard.current.wKey.wasReleasedThisFrame ||
-                Keyboard.current.upArrowKey.wasReleasedThisFrame)
-            {
-                _introScreen.MenuSelector.MoveUp();
-            }
-
-            if (Keyboard.current.sKey.wasReleasedThisFrame ||
-                Keyboard.current.downArrowKey.wasReleasedThisFrame)
-            {
-                _introScreen.MenuSelector.MoveDown();
-            }
-
-            if (Keyboard.current.enterKey.wasReleasedThisFrame ||
-                Keyboard.current.numpadEnterKey.wasReleasedThisFrame)
-            {
-                _introScreen.MenuSelector.Confirm();
-            }
-
-            if (Keyboard.current.escapeKey.wasReleasedThisFrame &&
-                _introScreen.IsShowIntroduce)
-            {
-                _introScreen.CloseIntroduceAsync().Forget();
-            }
-        }
-        #endregion
-
 
         private bool LoadTables()
         {

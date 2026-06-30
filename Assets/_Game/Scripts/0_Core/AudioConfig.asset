@@ -1,0 +1,79 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a38a1aa9abf0c6045b0a3bd1f754428c, type: 3}
+  m_Name: AudioConfig
+  m_EditorClassIdentifier: Assembly-CSharp::AudioData
+  _cues:
+  - _id: 1
+    _clip: {fileID: 8300000, guid: 38856b8105528584dbb5f2aadc4fa846, type: 3}
+    _volume: 0.25
+    _pitch: 1
+  - _id: 2
+    _clip: {fileID: 8300000, guid: a20762614f304ea45a33fc6d82c13f79, type: 3}
+    _volume: 0.3
+    _pitch: 1
+  - _id: 10
+    _clip: {fileID: 8300000, guid: 310f366d149442a42881fccd70d1d8f1, type: 3}
+    _volume: 1
+    _pitch: 0
+  - _id: 11
+    _clip: {fileID: 8300000, guid: 6134e927ccc832241a6548204dc601ca, type: 3}
+    _volume: 1
+    _pitch: 1
+  - _id: 12
+    _clip: {fileID: 8300000, guid: b29bd51ba949159469546a2a99fb1331, type: 3}
+    _volume: 1
+    _pitch: 1
+  - _id: 13
+    _clip: {fileID: 8300000, guid: 4a3a61dfec1032a4dacc996921883f3c, type: 3}
+    _volume: 0.8
+    _pitch: 1
+  - _id: 14
+    _clip: {fileID: 8300000, guid: 3f271c669cb8d434bb5ef3de4ee3c93c, type: 3}
+    _volume: 0.5
+    _pitch: 0.8
+  - _id: 50
+    _clip: {fileID: 8300000, guid: f1f0be29a64ee5744a49d451b7287a95, type: 3}
+    _volume: 1
+    _pitch: 1
+  - _id: 51
+    _clip: {fileID: 8300000, guid: 6f2b3624b5953464db0398eb9ef41539, type: 3}
+    _volume: 1
+    _pitch: 1
+  - _id: 52
+    _clip: {fileID: 8300000, guid: 222fbb51bc5760d408506ce44ba08e2a, type: 3}
+    _volume: 1
+    _pitch: 1
+  - _id: 100
+    _clip: {fileID: 8300000, guid: 8d737f222dc58dd49a6b0aae0c8cbc94, type: 3}
+    _volume: 1
+    _pitch: 1
+  - _id: 101
+    _clip: {fileID: 8300000, guid: 9cfb067f675819641b08ff0b1f0decf6, type: 3}
+    _volume: 1
+    _pitch: 1
+  - _id: 200
+    _clip: {fileID: 8300000, guid: 1a966490d92b81547aaa3ec33c098bd0, type: 3}
+    _volume: 1
+    _pitch: 1
+  - _id: 201
+    _clip: {fileID: 8300000, guid: 951c7a7deb195294681ef8031ff27d0b, type: 3}
+    _volume: 1
+    _pitch: 1
+  - _id: 202
+    _clip: {fileID: 8300000, guid: 5dd8042a8c4c611448af9f6243021edf, type: 3}
+    _volume: 1
+    _pitch: 1
+  - _id: 203
+    _clip: {fileID: 8300000, guid: 62649b1179f0d9c49beff9d1741ee29f, type: 3}
+    _volume: 1
+    _pitch: 1

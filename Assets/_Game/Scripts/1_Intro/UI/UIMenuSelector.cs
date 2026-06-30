@@ -89,6 +89,7 @@ public class UIMenuSelector : MonoBehaviour
         }
 
         _currentIndex = index;
+        AudioManager.Instance.PlaySfx(AudioCueId.UiMove);
 
         for (int i = 0; i < _selectButtons.Length; i ++)
         {
@@ -98,8 +99,8 @@ public class UIMenuSelector : MonoBehaviour
 
     public void Confirm()
     {
-        // 나중에 여기서 현재 선택 실행 연결
-        Debug.Log($"Selected Menu Index: {_currentIndex}");
+        //AudioManager.Instance.PlaySfx(AudioCueId.UiClick);
+        AudioManager.Instance.PlaySfx(AudioCueId.UiConfirm);
 
         _selectButtons[_currentIndex].PlayConfirm();
 
@@ -119,10 +120,5 @@ public class UIMenuSelector : MonoBehaviour
             default:
                 break;
         }
-    }
-
-    private void OnDestroy()
-    {
-
     }
 }

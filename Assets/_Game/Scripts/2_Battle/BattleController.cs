@@ -1,7 +1,9 @@
 using Cysharp.Threading.Tasks;
 using System.Collections.Generic;
+using UI;
 using Unity.Cinemachine;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandler
 {
@@ -34,6 +36,7 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
         {
             _battleView.Bind(_viewModel);
             _battleView.OnAttackClicked += OnAttackClicked;
+            _battleView.OnParryClicked += OnParryClicked;
         }
     }
 
@@ -41,6 +44,30 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
     {
         StartBattleAsync().Forget(Debug.LogException);
     }
+
+    #region 유저 입력
+    public void Update()
+    {
+        if (Keyboard.current == null)
+        {
+            return;
+        }
+
+        //원버튼 가능
+        if (Keyboard.current.enterKey.wasReleasedThisFrame ||
+            Keyboard.current.spaceKey.wasReleasedThisFrame)
+        {
+            OnAttackClicked();
+        }
+
+        //원버튼 가능
+        if (Keyboard.current.enterKey.wasReleasedThisFrame ||
+            Keyboard.current.spaceKey.wasReleasedThisFrame)
+        {
+            OnParryClicked();
+        }
+    }
+    #endregion
 
     private async UniTask StartBattleAsync()
     {
@@ -162,7 +189,7 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
         PlaySkillSequence(BattleTeam.Ally, skillData);
     }
 
-    public void OnParryInput()
+    public void OnParryClicked()
     {
         if (_battleModel == null || _battleModel.CanRequestParry == false)
         {
@@ -170,7 +197,6 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
         }
 
         _viewModel.SetParryButtonInteractable(false);
-
         _battleModel.RequestParry();
     }
     #endregion
@@ -471,6 +497,8 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
         if (_battleView != null)
         {
             _battleView.OnAttackClicked -= OnAttackClicked;
+            _battleView.OnParryClicked -= OnParryClicked;
+
             _battleView.Unbind();
         }
     }

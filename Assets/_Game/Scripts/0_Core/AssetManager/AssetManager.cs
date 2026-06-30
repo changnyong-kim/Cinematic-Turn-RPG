@@ -31,7 +31,6 @@ public sealed class AssetManager : MonoBehaviour
         }
 
         Instance = this;
-        DontDestroyOnLoad(gameObject);
 
         if (_poolRoot == null)
         {
