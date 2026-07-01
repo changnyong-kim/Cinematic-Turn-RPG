@@ -32,18 +32,6 @@ public enum DefenderReactionType
     Parry,
 }
 
-[System.Serializable]
-public enum BattleEffectType
-{
-    None = 0,
-    Hit,
-    Attack,
-    MonsterAttack,
-    ParryNoti,
-    Parry,
-    PerpectParry
-}
-
 public enum ActorStatusType
 {
     None = 0,

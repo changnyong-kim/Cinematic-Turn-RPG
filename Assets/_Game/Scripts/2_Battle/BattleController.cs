@@ -65,17 +65,11 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
             return;
         }
 
-        //원버튼 가능
+        // 현재 전투 상태에 따라 공격 또는 패링으로 처리되는 원버튼 입력
         if (Keyboard.current.enterKey.wasReleasedThisFrame ||
             Keyboard.current.spaceKey.wasReleasedThisFrame)
         {
             OnAttackClicked();
-        }
-
-        //원버튼 가능
-        if (Keyboard.current.enterKey.wasReleasedThisFrame ||
-            Keyboard.current.spaceKey.wasReleasedThisFrame)
-        {
             OnParryClicked();
         }
     }
@@ -255,9 +249,7 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
 
     private BattleResult ApplySkill(BattleTeam attackerTeam, BattleSkillTableData skillData)
     {
-        BattleResult result = attackerTeam == BattleTeam.Ally
-            ? _battleModel.UsePlayerSkill(skillData)
-            : _battleModel.UseMonsterSkill(skillData);
+        BattleResult result = (attackerTeam == BattleTeam.Ally) ? _battleModel.UsePlayerSkill(skillData) : _battleModel.UseMonsterSkill(skillData);
 
         ApplyBattleResult(result);
 

@@ -4,6 +4,11 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Playables;
 
+/// <summary>
+/// Timeline 기반 전투 연출을 제어하는 Director.
+/// 공격, 피격, 패링, 전투 시작 연출의 흐름을 관리하고,
+/// 하위 이동/카메라 연출 컴포넌트와 Timeline Signal을 통해 전투 연출과 판정 시점을 연결한다.
+/// </summary>
 public sealed class BattleCinematicDirector : MonoBehaviour
 {
     private enum CinematicSequenceType
@@ -386,9 +391,7 @@ public sealed class BattleCinematicDirector : MonoBehaviour
 
         Time.timeScale = timeScale;
 
-        await UniTask.Delay(
-            durationMs,
-            ignoreTimeScale: true);
+        await UniTask.Delay(durationMs, ignoreTimeScale: true);
 
         Time.timeScale = previousTimeScale;
     }
@@ -487,21 +490,15 @@ public sealed class BattleCinematicDirector : MonoBehaviour
     {
         if (attackerTeam == BattleTeam.Ally)
         {
-            return GetNextDirector(
-                CinematicSequenceType.PlayerAttack,
-                _playerAttackDirectors);
+            return GetNextDirector( CinematicSequenceType.PlayerAttack, _playerAttackDirectors);
         }
 
-        return GetNextDirector(
-            CinematicSequenceType.MonsterAttack,
-            _monsterAttackDirectors);
+        return GetNextDirector(CinematicSequenceType.MonsterAttack, _monsterAttackDirectors);
     }
 
     private PlayableDirector GetDefenderHitDirector(BattleTeam attackerTeam)
     {
-        return attackerTeam == BattleTeam.Ally
-            ? _monsterHitDirector
-            : _playerHitDirector;
+        return (attackerTeam == BattleTeam.Ally) ? _monsterHitDirector : _playerHitDirector;
     }
 
 
@@ -512,8 +509,7 @@ public sealed class BattleCinematicDirector : MonoBehaviour
             return Vector3.zero;
         }
 
-        return (_attackActor.transform.position + _defendActor.transform.position) * 0.5f
-            + Vector3.up * 1.0f;
+        return (_attackActor.transform.position + _defendActor.transform.position) * 0.5f + Vector3.up * 1.0f;
     }
 
     private void LookAtTargetFlat(ActorBase actor, ActorBase target)

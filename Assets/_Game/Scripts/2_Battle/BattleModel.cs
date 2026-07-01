@@ -1,5 +1,10 @@
 using UnityEngine;
 
+/// <summary>
+/// 전투 행동 처리 결과.
+/// 상태 전이 결과와 방어자 반응 타입을 함께 전달하여
+/// 전투 로직과 연출 분기를 분리한다.
+/// </summary>
 public readonly struct BattleResult
 {
     public static BattleResult None => default;
@@ -39,6 +44,11 @@ public readonly struct BattleResult
     }
 }
 
+/// <summary>
+/// 전투 규칙과 상태 전이를 담당하는 Model.
+/// 데미지, 턴 전환, 패링/스턴 판정만 처리하고
+/// UI와 Timeline 연출에는 직접 의존하지 않는다.
+/// </summary>
 public sealed class BattleModel
 {
     public ActorBase Player
