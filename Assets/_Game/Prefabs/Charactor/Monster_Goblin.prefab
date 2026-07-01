@@ -10352,10 +10352,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 6509107162570174327}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 439d3bbe21e1ee741ac10673c0530fcf, type: 3}
+  m_Script: {fileID: 11500000, guid: e5e7d60a7a79fbd41a86bfab12e16714, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MonsterActor
-  _animator: {fileID: 0}
+  _animator: {fileID: 6698955179215612111}
   _auraParticleGob: {fileID: 2334257358057124998}
 --- !u!1 &6535390091466686018
 GameObject:

@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public abstract class ActorBase : MonoBehaviour
+public class ActorBase : MonoBehaviour
 {
     private static readonly int IsBlockingHash = Animator.StringToHash("IsBlocking");
     private static readonly int IdleHash = Animator.StringToHash("Idle");

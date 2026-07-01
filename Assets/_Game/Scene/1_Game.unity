@@ -15085,11 +15085,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1030975073, guid: abc00000000011259404018964232404, type: 3}
   m_PrefabInstance: {fileID: 1195870004}
   m_PrefabAsset: {fileID: 0}
---- !u!320 &1199521946 stripped
-PlayableDirector:
-  m_CorrespondingSourceObject: {fileID: 3343908400239880141, guid: 1ff70cc4432f10240b7b13271e66337b, type: 3}
-  m_PrefabInstance: {fileID: 5768865573109656385}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1204042654
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -27108,6 +27103,10 @@ PrefabInstance:
       propertyPath: m_LocalRotation.z
       value: -0.10559902
       objectReference: {fileID: 0}
+    - target: {fileID: 1690045014665383459, guid: 1a9e1de425b33864b8955717ebf5dafe, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 1714645623789517090, guid: 1a9e1de425b33864b8955717ebf5dafe, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0.028400872
@@ -27587,7 +27586,7 @@ PrefabInstance:
     - target: {fileID: 5933695283821156446, guid: 1a9e1de425b33864b8955717ebf5dafe, type: 3}
       propertyPath: '_playerAttackDirectors.Array.data[1]'
       value: 
-      objectReference: {fileID: 1199521946}
+      objectReference: {fileID: 5768865573109656387}
     - target: {fileID: 5933695283821156446, guid: 1a9e1de425b33864b8955717ebf5dafe, type: 3}
       propertyPath: '_monsterAttackDirectors.Array.data[0]'
       value: 
@@ -28207,6 +28206,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Timeline_Sequence
       objectReference: {fileID: 0}
+    - target: {fileID: 1945024069933601908, guid: 1ff70cc4432f10240b7b13271e66337b, type: 3}
+      propertyPath: m_SceneBindings.Array.data[0].value
+      value: 
+      objectReference: {fileID: 2099611756}
     - target: {fileID: 1945024069933601908, guid: 1ff70cc4432f10240b7b13271e66337b, type: 3}
       propertyPath: m_SceneBindings.Array.data[2].value
       value: 

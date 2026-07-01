@@ -1,6 +1,7 @@
+using Cysharp.Threading.Tasks;
+using DG.Tweening;
 using System;
 using System.Collections.Generic;
-using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Playables;
 
@@ -455,11 +456,7 @@ public sealed class BattleCinematicDirector : MonoBehaviour
 
     public async UniTask AttackEnd()
     {
-        await _actorMover.ReturnAsync(
-            _attackActor.GetAnimator,
-            _attackActor.transform,
-            _attackerOriginPosition,
-            _currentReturnDuration);
+        await _actorMover.ReturnAsync(_attackActor.GetAnimator, _attackActor.transform, _attackerOriginPosition, _currentReturnDuration);
 
         // 최종 보정
         _attackActor.transform.SetPositionAndRotation(_attackerOriginPosition, _attackerOriginRotation);

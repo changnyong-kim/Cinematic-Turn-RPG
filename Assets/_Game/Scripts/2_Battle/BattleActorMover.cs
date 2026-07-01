@@ -4,12 +4,7 @@ using Cysharp.Threading.Tasks;
 
 public sealed class BattleActorMover
 {
-    public async UniTask MoveToTargetAsync(
-    Animator animator,
-    Transform attacker,
-    Transform target,
-    float distance,
-    float duration)
+    public async UniTask MoveToTargetAsync(Animator animator, Transform attacker, Transform target, float distance, float duration)
     {
         Vector3 direction = (target.position - attacker.position).normalized;
         Vector3 attackPosition = target.position - direction * distance;

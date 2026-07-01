@@ -1514,7 +1514,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 1183317602681492916}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 029c4632eba4d1643a2bc896e3e67e31, type: 3}
+  m_Script: {fileID: 11500000, guid: e5e7d60a7a79fbd41a86bfab12e16714, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerActor
   _animator: {fileID: 4932571446134044010}

@@ -1,10 +1,15 @@
 using Cysharp.Threading.Tasks;
 using System.Collections.Generic;
-using UI;
 using Unity.Cinemachine;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+/// <summary>
+/// 전투 흐름을 제어하는 컨트롤러입니다.
+/// 플레이어 입력, 몬스터 행동 선택, 스킬 실행 요청, 턴 전환, 전투 결과 반영을 담당합니다.
+/// 실제 전투 데이터 처리는 BattleModel에 위임하고,
+/// 시네마틱 연출은 BattleCinematicDirector에 위임합니다.
+/// </summary>
 public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandler
 {
     [Header("Spawn Point")]
@@ -25,11 +30,14 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
     [SerializeField]
     private UIBattleView _battleView;
 
+    /// <summary>
+    /// AI가 별도로 없기 때문에, 행동순서로 몬스터 스킬을 결정한다.
+    /// </summary>
     private int _monsterSkillSeqIdx;
     private readonly BattleViewModel _viewModel = new BattleViewModel();
     private BattleModel _battleModel;
 
-
+    #region 유니티 생명주기
     private void Awake()
     {
         if (_battleView != null)
@@ -44,8 +52,6 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
     {
         StartBattleAsync().Forget(Debug.LogException);
     }
-
-    #region 유저 입력
     public void Update()
     {
         if (Keyboard.current == null)
@@ -67,8 +73,21 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
             OnParryClicked();
         }
     }
+
+    private void OnDestroy()
+    {
+        if (_battleView != null)
+        {
+            _battleView.OnAttackClicked -= OnAttackClicked;
+            _battleView.OnParryClicked -= OnParryClicked;
+
+            _battleView.Unbind();
+        }
+    }
     #endregion
 
+
+    #region 전투 초기화
     private async UniTask StartBattleAsync()
     {
         ActorBase player = null;
@@ -174,8 +193,10 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
 
         return actor;
     }
+    #endregion
 
-    #region 플레이어 입력 액션
+
+    #region 플레이어 입력
     private void OnAttackClicked()
     {
         if (_battleModel == null || _battleModel.CanPlayerAct == false)
@@ -201,6 +222,8 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
     }
     #endregion
 
+
+    #region 스킬 실행 흐름
     private void PlaySkillSequence(BattleTeam attackerTeam, BattleSkillTableData skillData)
     {
         if (_battleModel == null || _cinematicDirector == null || skillData == null)
@@ -227,6 +250,22 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
             OnTurnEnd);
     }
 
+    private BattleResult ApplySkill(BattleTeam attackerTeam, BattleSkillTableData skillData)
+    {
+        BattleResult result = attackerTeam == BattleTeam.Ally
+            ? _battleModel.UsePlayerSkill(skillData)
+            : _battleModel.UseMonsterSkill(skillData);
+
+        RefreshBattleView();
+
+        ApplyBattleResult(result);
+
+        return result;
+    }
+    #endregion
+
+
+    #region 몬스터 행동 선택
     private void ExecuteMonsterTurn()
     {
         if (_battleModel == null || _battleModel.CanMonsterAct == false || _cinematicDirector == null)
@@ -255,7 +294,9 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
 
         return skillData;
     }
+    #endregion
 
+    #region 턴 처리
     private BattleState OnTurnEnd()
     {
         OnTurnEndAsync().Forget(Debug.LogException);
@@ -289,6 +330,42 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
         ApplyTurnState(_battleModel.State);
     }
 
+    private void ApplyTurnState(BattleState battleState)
+    {
+        switch (battleState)
+        {
+            case BattleState.PlayerTurn:
+            {
+                _viewModel.SetTurnText("Player Turn");
+
+                _battleModel.Player.SetBlocking(false);
+                _battleModel.Monster.AcitveAuraParticle(true);
+
+                _viewModel.SetAttackButtonInteractable(true);
+                _viewModel.SetParryButtonInteractable(false);
+
+                break;
+            }
+            case BattleState.MonsterTurn:
+            {
+                _battleModel.Monster.AcitveAuraParticle(true);
+
+                _viewModel.SetAttackButtonInteractable(false);
+                _viewModel.SetParryButtonInteractable(true);
+
+                ExecuteMonsterTurn();
+                break;
+            }
+            default:
+            {
+                break;
+            }
+        }
+    }
+    #endregion
+
+
+    #region 상태이상 처리
     private async UniTask ApplyStatusSkipResultAsync(BattleResult result)
     {
         switch (result.SkippedStatusType)
@@ -346,53 +423,10 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
 
         ApplyTurnState(result.State);
     }
+    #endregion
 
-    private void ApplyTurnState(BattleState battleState)
-    {
-        switch (battleState)
-        {
-            case BattleState.PlayerTurn:
-            {
-                _viewModel.SetTurnText("Player Turn");
 
-                _battleModel.Player.SetBlocking(false);
-                _battleModel.Monster.AcitveAuraParticle(true);
-
-                _viewModel.SetAttackButtonInteractable(true);
-                _viewModel.SetParryButtonInteractable(false);
-
-                break;
-            }
-            case BattleState.MonsterTurn:
-            {
-                _battleModel.Monster.AcitveAuraParticle(true);
-
-                _viewModel.SetAttackButtonInteractable(false);
-                _viewModel.SetParryButtonInteractable(true);
-
-                ExecuteMonsterTurn();
-                break;
-            }
-            default:
-            {
-                break;
-            }
-        }
-    }
-
-    private BattleResult ApplySkill(BattleTeam attackerTeam, BattleSkillTableData skillData)
-    {
-        BattleResult result = attackerTeam == BattleTeam.Ally
-            ? _battleModel.UsePlayerSkill(skillData)
-            : _battleModel.UseMonsterSkill(skillData);
-
-        RefreshBattleView();
-
-        ApplyBattleResult(result);
-
-        return result;
-    }
-
+    #region 액터 조회
     private ActorBase GetActor(BattleTeam team)
     {
         return team == BattleTeam.Ally
@@ -406,6 +440,7 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
             ? _battleModel.Monster
             : _battleModel.Player;
     }
+    #endregion
 
 
     #region 타임라인 이벤트 핸들러 콜백
@@ -456,6 +491,8 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
     }
     #endregion
 
+
+    #region 전투 결과 및 뷰 갱신
     private void ApplyBattleResult(BattleResult result)
     {
         switch (result.State)
@@ -491,15 +528,5 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
         _viewModel.SetPlayerHp(_battleModel.Player.CurrentHp, _battleModel.Player.MaxHp);
         _viewModel.SetMonsterHp(_battleModel.Monster.CurrentHp, _battleModel.Monster.MaxHp);
     }
-
-    private void OnDestroy()
-    {
-        if (_battleView != null)
-        {
-            _battleView.OnAttackClicked -= OnAttackClicked;
-            _battleView.OnParryClicked -= OnParryClicked;
-
-            _battleView.Unbind();
-        }
-    }
+    #endregion
 }
