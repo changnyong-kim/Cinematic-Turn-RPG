@@ -5,8 +5,7 @@ public class ActorBase : MonoBehaviour
 {
     private static readonly int IsBlockingHash = Animator.StringToHash("IsBlocking");
     private static readonly int IdleHash = Animator.StringToHash("Idle");
-
-    private static readonly int StunedHash = Animator.StringToHash("Stuned");
+    private static readonly int StunnedHash = Animator.StringToHash("Stuned");
     private static readonly int DeadHash = Animator.StringToHash("Die");
 
 
@@ -45,7 +44,7 @@ public class ActorBase : MonoBehaviour
             _animator = GetComponentInChildren<Animator>();
         }
 
-        AcitveAuraParticle(true);
+        ActiveAuraParticle(true);
     }
 
     public virtual void TakeDamage(int damage)
@@ -57,7 +56,7 @@ public class ActorBase : MonoBehaviour
 
         //damage = 0;
 
-        AcitveAuraParticle(false);
+        ActiveAuraParticle(false);
 
         _currentHp -= damage;
 
@@ -104,9 +103,9 @@ public class ActorBase : MonoBehaviour
         GetAnimator.CrossFade(DeadHash, 0.1f);
     }
 
-    public virtual void Stunded()
+    public virtual void Stunned()
     {
-        GetAnimator.CrossFade(StunedHash, 0.1f);
+        GetAnimator.CrossFade(StunnedHash, 0.1f);
     }
 
     public void SetBlocking(bool isBlocking)
@@ -123,16 +122,6 @@ public class ActorBase : MonoBehaviour
         _animator.Update(0f);
     }
 
-    private void SetTrigger(int triggerHash)
-    {
-        if (_animator == null)
-        {
-            return;
-        }
-
-        _animator.SetTrigger(triggerHash);
-    }
-
     public void PauseAnimator()
     {
         Animator animator = GetAnimator;
@@ -144,8 +133,8 @@ public class ActorBase : MonoBehaviour
 
         animator.speed = 0f;
 
-        //Ω∫≈ÈΩ√ ∆ƒ∆º≈¨ ∏ÿ√„ or ∫Ò»∞º∫»≠
-        AcitveAuraParticle(false);
+        //Ïä§ÌÜ±Ïãú ÌååÌã∞ÌÅ¥ Î©àÏ∂§ or ÎπÑÌôúÏÑ±Ìôî
+        ActiveAuraParticle(false);
     }
 
     public void ResumeAnimator()
@@ -159,10 +148,10 @@ public class ActorBase : MonoBehaviour
 
         animator.speed = 1f;
 
-        AcitveAuraParticle(true);
+        ActiveAuraParticle(true);
     }
 
-    public void AcitveAuraParticle(bool active)
+    public void ActiveAuraParticle(bool active)
     {
         if (_auraParticleGob == null)
         {

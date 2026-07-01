@@ -2,19 +2,42 @@ using DG.Tweening;
 using System;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
+/// <summary>
+/// BattleViewModel의 상태를 실제 전투 UI에 반영하는 View.
+/// 전투 로직은 처리하지 않고, ViewModel 값 변경에 따른 표시/버튼/페이드 처리만 담당한다.
+/// </summary>
 public sealed class UIBattleView : MonoBehaviour
 {
-    /// <summary>
-    /// ���� ViewModel
-    /// </summary>
+    private readonly struct TurnTextStyle
+    {
+        public Material Material
+        {
+            get;
+        }
+        public bool IsPlayerTurnBar
+        {
+            get;
+        }
+        public bool PlayTurnSound
+        {
+            get;
+        }
+
+        public TurnTextStyle(Material material, bool isPlayerTurnBar, bool playTurnSound)
+        {
+            Material = material;
+            IsPlayerTurnBar = isPlayerTurnBar;
+            PlayTurnSound = playTurnSound;
+        }
+    }
+
     private BattleViewModel _viewModel;
- 
-    /// <summary>
-    /// Ŭ�� �̺�Ʈ
-    /// </summary>
-    public event Action OnAttackClicked, OnParryClicked;
+
+    public event Action OnAttackClicked;
+    public event Action OnParryClicked;
 
     [Header("Turn Text Materials")]
     [SerializeField]
@@ -26,6 +49,7 @@ public sealed class UIBattleView : MonoBehaviour
     [SerializeField]
     private Material _monsterTurnMaterial;
 
+    [Header("HP")]
     [SerializeField]
     private TextMeshProUGUI _playerHpText;
 
@@ -38,14 +62,27 @@ public sealed class UIBattleView : MonoBehaviour
     [SerializeField]
     private Image _monsterHpImg;
 
+    [Header("Turn")]
     [SerializeField]
-    private TextMeshProUGUI _turnText, _skillNotiText;
+    private TextMeshProUGUI _turnText;
 
     [SerializeField]
-    private GameObject _playerTrunBar, _monsterTrunBar;
+    private TextMeshProUGUI _skillNotiText;
 
     [SerializeField]
-    private Button _attackButton, _parryButton;
+    [FormerlySerializedAs("_playerTrunBar")]
+    private GameObject _playerTurnBar;
+
+    [SerializeField]
+    [FormerlySerializedAs("_monsterTrunBar")]
+    private GameObject _monsterTurnBar;
+
+    [Header("Buttons")]
+    [SerializeField]
+    private Button _attackButton;
+
+    [SerializeField]
+    private Button _parryButton;
 
     [Header("Canvas Group")]
     [SerializeField]
@@ -68,35 +105,24 @@ public sealed class UIBattleView : MonoBehaviour
     {
         Unbind();
 
+        if (viewModel == null)
+        {
+            return;
+        }
+
         _viewModel = viewModel;
 
         _viewModel.PlayerHpText.OnValueChanged += SetPlayerHpText;
         _viewModel.MonsterHpText.OnValueChanged += SetMonsterHpText;
         _viewModel.TurnText.OnValueChanged += SetTurnText;
-        _viewModel.SkillNotiText.OnValueChanged += SkillNotiText;
-
+        _viewModel.SkillNotiText.OnValueChanged += SetSkillNotiText;
         _viewModel.AttackButtonInteractable.OnValueChanged += SetAttackButtonInteractable;
         _viewModel.ParryButtonInteractable.OnValueChanged += SetParryButtonInteractable;
-
-        SetPlayerHpText(_viewModel.PlayerHpText.Value);
-        SetMonsterHpText(_viewModel.MonsterHpText.Value);
-        SetTurnText(_viewModel.TurnText.Value);
-
-        SetAttackButtonInteractable(_viewModel.AttackButtonInteractable.Value);
-        SetParryButtonInteractable(_viewModel.ParryButtonInteractable.Value);
-
-        if (_attackButton != null)
-        {
-            _attackButton.onClick.AddListener(HandleAttackButtonClicked);
-        }
-
-        if (_parryButton != null)
-        {
-            _parryButton.onClick.AddListener(HandleParryButtonClicked);
-        }
-
         _viewModel.CommandUIVisible.OnValueChanged += SetCommandUIVisible;
         _viewModel.TurnTextVisible.OnValueChanged += SetTurnUIVisible;
+
+        ApplyCurrentViewModelState();
+        BindButtonEvents();
     }
 
     public void Unbind()
@@ -106,53 +132,180 @@ public sealed class UIBattleView : MonoBehaviour
             _viewModel.PlayerHpText.OnValueChanged -= SetPlayerHpText;
             _viewModel.MonsterHpText.OnValueChanged -= SetMonsterHpText;
             _viewModel.TurnText.OnValueChanged -= SetTurnText;
-
+            _viewModel.SkillNotiText.OnValueChanged -= SetSkillNotiText;
             _viewModel.AttackButtonInteractable.OnValueChanged -= SetAttackButtonInteractable;
             _viewModel.ParryButtonInteractable.OnValueChanged -= SetParryButtonInteractable;
+            _viewModel.CommandUIVisible.OnValueChanged -= SetCommandUIVisible;
+            _viewModel.TurnTextVisible.OnValueChanged -= SetTurnUIVisible;
 
             _viewModel = null;
         }
 
+        UnbindButtonEvents();
+    }
+
+    private void ApplyCurrentViewModelState()
+    {
+        SetPlayerHpText(_viewModel.PlayerHpText.Value);
+        SetMonsterHpText(_viewModel.MonsterHpText.Value);
+        SetTurnText(_viewModel.TurnText.Value);
+        SetSkillNotiText(_viewModel.SkillNotiText.Value);
+        SetAttackButtonInteractable(_viewModel.AttackButtonInteractable.Value);
+        SetParryButtonInteractable(_viewModel.ParryButtonInteractable.Value);
+        SetCommandUIVisible(_viewModel.CommandUIVisible.Value);
+        SetTurnUIVisible(_viewModel.TurnTextVisible.Value);
+    }
+
+    private void BindButtonEvents()
+    {
+        if (_attackButton != null)
+        {
+            _attackButton.onClick.AddListener(HandleAttackButtonClicked);
+        }
+
+        if (_parryButton != null)
+        {
+            _parryButton.onClick.AddListener(HandleParryButtonClicked);
+        }
+    }
+
+    private void UnbindButtonEvents()
+    {
         if (_attackButton != null)
         {
             _attackButton.onClick.RemoveListener(HandleAttackButtonClicked);
         }
 
-        if(_parryButton != null)
+        if (_parryButton != null)
         {
             _parryButton.onClick.RemoveListener(HandleParryButtonClicked);
         }
     }
 
-    private void SetPlayerHpText((float, string) hpInfo)
+    /// <summary>
+    /// Turn 상태를 UI 표시 텍스트로 변환한다.
+    /// </summary>
+    private string GetTurnText(BattleTurnViewState state)
     {
-        if (_playerHpText != null)
+        switch (state)
         {
-            _playerHpImg.fillAmount = hpInfo.Item1;
-            _playerHpText.text = hpInfo.Item2;
+            case BattleTurnViewState.PlayerTurn:
+            {
+                return "PLAYER TURN";
+            }
+            case BattleTurnViewState.PlayerAttack:
+            {
+                return "PLAYER ATTACK";
+            }
+            case BattleTurnViewState.MonsterAttack:
+            {
+                return "MONSTER ATTACK";
+            }
+            case BattleTurnViewState.PlayerStunned:
+            {
+                return "PLAYER STUNNED";
+            }
+            case BattleTurnViewState.MonsterStunned:
+            {
+                return "MONSTER STUNNED";
+            }
+            case BattleTurnViewState.Win:
+            {
+                return "WIN";
+            }
+            case BattleTurnViewState.Lose:
+            {
+                return "LOSE";
+            }
+            case BattleTurnViewState.None:
+            default:
+            {
+                return string.Empty;
+            }
         }
     }
 
-    private void SetMonsterHpText((float, string) hpInfo)
+    private TurnTextStyle GetTurnTextStyle(BattleTurnViewState state)
     {
-
-        if (_monsterHpText != null)
+        switch (state)
         {
-            _monsterHpImg.fillAmount = hpInfo.Item1;
-            _monsterHpText.text = hpInfo.Item2;
+            case BattleTurnViewState.PlayerTurn:
+            {
+                return new TurnTextStyle(_playerTurnMaterial, true, true);
+            }
+            case BattleTurnViewState.PlayerAttack:
+            {
+                return new TurnTextStyle(_playerTurnMaterial, true, false);
+            }
+            case BattleTurnViewState.MonsterAttack:
+            {
+                return new TurnTextStyle(_monsterTurnMaterial, false, true);
+            }
+            case BattleTurnViewState.PlayerStunned:
+            {
+                return new TurnTextStyle(_monsterTurnMaterial, false, false);
+            }
+            case BattleTurnViewState.MonsterStunned:
+            {
+                return new TurnTextStyle(_playerTurnMaterial, true, false);
+            }
+            case BattleTurnViewState.Win:
+            {
+                return new TurnTextStyle(_playerTurnMaterial, true, false);
+            }
+            case BattleTurnViewState.Lose:
+            {
+                return new TurnTextStyle(_monsterTurnMaterial, false, false);
+            }
+            case BattleTurnViewState.None:
+            default:
+            {
+                return new TurnTextStyle(_normalTurnMaterial, true, false);
+            }
         }
     }
 
-    private void SetTurnText(string text)
+    private void SetPlayerHpText((float FillAmount, string Text) hpInfo)
+    {
+        SetHpView(_playerHpImg, _playerHpText, hpInfo);
+    }
+
+    private void SetMonsterHpText((float FillAmount, string Text) hpInfo)
+    {
+        SetHpView(_monsterHpImg, _monsterHpText, hpInfo);
+    }
+
+    private void SetHpView(Image hpImage, TextMeshProUGUI hpText, (float FillAmount, string Text) hpInfo)
+    {
+        if (hpImage != null)
+        {
+            hpImage.fillAmount = hpInfo.FillAmount;
+        }
+
+        if (hpText != null)
+        {
+            hpText.text = hpInfo.Text;
+        }
+    }
+
+    private void SetTurnText(BattleTurnViewState state)
     {
         if (_turnText != null)
         {
-            _turnText.text = text;
-            ApplyTurnTextMaterial(text);
+            _turnText.text = GetTurnText(state);
+
+            TurnTextStyle style = GetTurnTextStyle(state);
+            _turnText.fontSharedMaterial = style.Material;
+            SetTurnBar(style.IsPlayerTurnBar);
+
+            if (style.PlayTurnSound)
+            {
+                PlayTurnChangeSound();
+            }
         }
     }
 
-    private void SkillNotiText(string text)
+    private void SetSkillNotiText(string text)
     {
         if (_skillNotiText != null)
         {
@@ -160,82 +313,27 @@ public sealed class UIBattleView : MonoBehaviour
         }
     }
 
-    private void ApplyTurnTextMaterial(string text)
+    private void SetTurnBar(bool isPlayerState)
     {
-        if (_turnText == null)
+        if (_playerTurnBar != null)
         {
-            return;
+            _playerTurnBar.SetActive(isPlayerState);
         }
 
-        if (string.IsNullOrEmpty(text))
+        if (_monsterTurnBar != null)
         {
-            _turnText.text = string.Empty;
-            _turnText.fontSharedMaterial = _normalTurnMaterial;
-            return;
+            _monsterTurnBar.SetActive(isPlayerState == false);
         }
-
-        if (IsSameTurnText(text, "Player Turn"))
-        {
-            AudioManager.Instance.PlaySfx(AudioCueId.TurnChange);
-
-            _turnText.text = "PLAYER TURN";
-            _turnText.fontSharedMaterial = _playerTurnMaterial;
-
-            TurnBarSetting(true);
-
-            return;
-        }
-
-        if (IsSameTurnText(text, "Monster Attack"))
-        {
-            AudioManager.Instance.PlaySfx(AudioCueId.TurnChange);
-
-            _turnText.text = "MONSTER ATTACK";
-            _turnText.fontSharedMaterial = _monsterTurnMaterial;
-
-            TurnBarSetting(false);
-
-            return;
-        }
-
-        if (IsSameTurnText(text, "Player Stunned"))
-        {
-            _turnText.text = "PLAYER STUNNED";
-            _turnText.fontSharedMaterial = _monsterTurnMaterial;
-
-            TurnBarSetting(false);
-
-            return;
-        }
-
-        if (IsSameTurnText(text, "Monster Stunned"))
-        {
-            _turnText.text = "MONSTER STUNNED";
-            _turnText.fontSharedMaterial = _playerTurnMaterial;
-
-            TurnBarSetting(true);
-
-            return;
-        }
-
-        TurnBarSetting(true);
-
-        _turnText.text = text.ToUpperInvariant();
-        _turnText.fontSharedMaterial = _normalTurnMaterial;
     }
 
-    private bool IsSameTurnText(string source, string target)
+    private void PlayTurnChangeSound()
     {
-        return string.Equals(
-            source,
-            target,
-            StringComparison.OrdinalIgnoreCase);
-    }
+        if (AudioManager.Instance == null)
+        {
+            return;
+        }
 
-    private void TurnBarSetting(bool isPlayerState)
-    {
-        _playerTrunBar.SetActive(isPlayerState);
-        _monsterTrunBar.SetActive(! isPlayerState);
+        AudioManager.Instance.PlaySfx(AudioCueId.TurnChange);
     }
 
     private void SetAttackButtonInteractable(bool isInteractable)
@@ -264,54 +362,74 @@ public sealed class UIBattleView : MonoBehaviour
         OnParryClicked?.Invoke();
     }
 
-    private void SetCommandUIVisible((bool visible, bool useFade) uiState)
+    private void SetCommandUIVisible((bool Visible, bool UseFade) uiState)
     {
-        _commandUITween?.Kill();
-
-        if(uiState.useFade == false)
-        {
-            _commandUICanvasGroup.gameObject.SetActive(uiState.visible);
-            return;
-        }
-
-        _commandUICanvasGroup.gameObject.SetActive(uiState.visible);
-
-        _commandUITween = uiState.visible
-            ? CanvasGroupTweenUtility.FadeIn(
-                _commandUICanvasGroup,
-                _commandUIFadeDuration,
-                Ease.OutQuad,
-                true)
-            : CanvasGroupTweenUtility.FadeOut(
-                _commandUICanvasGroup,
-                _commandUIFadeDuration,
-                Ease.InQuad,
-                true,
-                false);
+        _commandUITween = SetCanvasGroupVisible(
+            _commandUICanvasGroup,
+            _commandUITween,
+            uiState.Visible,
+            uiState.UseFade,
+            _commandUIFadeDuration,
+            Ease.OutQuad,
+            Ease.InQuad,
+            true);
     }
 
-    private void SetTurnUIVisible((bool visible, bool useFade) uiState)
+    private void SetTurnUIVisible((bool Visible, bool UseFade) uiState)
     {
-        _turnUITween?.Kill();
+        _turnUITween = SetCanvasGroupVisible(
+            _turnUICanvasGroup,
+            _turnUITween,
+            uiState.Visible,
+            uiState.UseFade,
+            _turnUIFadeDuration,
+            Ease.OutQuad,
+            Ease.InQuad,
+            false);
+    }
 
-        if (uiState.useFade == false)
+    private Tween SetCanvasGroupVisible(
+        CanvasGroup canvasGroup,
+        Tween currentTween,
+        bool visible,
+        bool useFade,
+        float fadeDuration,
+        Ease fadeInEase,
+        Ease fadeOutEase,
+        bool changeInteractable)
+    {
+        currentTween?.Kill();
+
+        if (canvasGroup == null)
         {
-            _turnUICanvasGroup.gameObject.SetActive(uiState.visible);
-            return;
+            return null;
         }
 
-        _turnUICanvasGroup.gameObject.SetActive(uiState.visible);
+        canvasGroup.gameObject.SetActive(visible);
 
-        _turnUITween = uiState.visible
+        if (useFade == false)
+        {
+            canvasGroup.alpha = visible ? 1f : 0f;
+
+            if (changeInteractable)
+            {
+                canvasGroup.interactable = visible;
+                canvasGroup.blocksRaycasts = visible;
+            }
+
+            return null;
+        }
+
+        return visible
             ? CanvasGroupTweenUtility.FadeIn(
-                _turnUICanvasGroup,
-                _turnUIFadeDuration,
-                Ease.OutQuad,
-                false)
+                canvasGroup,
+                fadeDuration,
+                fadeInEase,
+                changeInteractable)
             : CanvasGroupTweenUtility.FadeOut(
-                _turnUICanvasGroup,
-                _turnUIFadeDuration,
-                Ease.InQuad,
+                canvasGroup,
+                fadeDuration,
+                fadeOutEase,
                 true,
                 false);
     }

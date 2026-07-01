@@ -72,7 +72,8 @@ public sealed class BattleModel
         Monster.IsDead == false &&
         Monster.HasStatus(ActorStatusType.Stun) == false;
 
-    #region ÆĞ¸µ ÇÊµå
+
+    #region íŒ¨ë§ í•„ë“œ
     private bool _isParryWindowOpen;
     private bool _isParryRequested;
 
@@ -95,8 +96,8 @@ public sealed class BattleModel
     }
 
     /// <summary>
-    /// ÅÏ ½ÃÀÛ ½Ã »óÅÂ ÀÌ»óÀ¸·Î ÀÎÇØ Çàµ¿ÀÌ ½ºÅµµÇ´ÂÁö ÆÇÁ¤ÇÑ´Ù.
-    /// ÇöÀç´Â Stun¸¸ Ã³¸®ÇÑ´Ù.
+    /// í„´ ì‹œì‘ ì‹œ ìƒíƒœ ì´ìƒìœ¼ë¡œ ì¸í•´ í–‰ë™ì´ ìŠ¤í‚µë˜ëŠ”ì§€ íŒì •í•œë‹¤.
+    /// í˜„ì¬ëŠ” Stunë§Œ ì²˜ë¦¬í•œë‹¤.
     /// </summary>
     public BattleResult ResolveTurnStart()
     {
@@ -141,7 +142,7 @@ public sealed class BattleModel
     }
 
 
-    #region ½ºÅ³µ¥ÀÌÅÍ Ã³¸®
+    #region ìŠ¤í‚¬ë°ì´í„° ì²˜ë¦¬
     public BattleResult UsePlayerSkill(BattleSkillTableData skillData)
     {
         if (CanPlayerAct == false)
@@ -165,9 +166,8 @@ public sealed class BattleModel
             return new BattleResult(State);
         }
 
-        //ÆĞ¸® ¼º°ø½Ã ÇÃ·¹ÀÌ¾îÅÏ ¹İÈ¯
+        // íŒ¨ë¦¬ ì„±ê³µ ìƒíƒœë©´ ëª¬ìŠ¤í„° í„´ì„ ìŠ¤í‚µí•˜ê³  í”Œë ˆì´ì–´ í„´ìœ¼ë¡œ ë³µê·€í•œë‹¤.
         State = (_isParryRequested) ? BattleState.PlayerTurn : BattleState.MonsterTurn;
-        //-
 
         ClearParryWindow();
 
@@ -205,7 +205,6 @@ public sealed class BattleModel
         }
 
         State = BattleState.PlayerTurn;
-        //ClearParryWindow();
 
         return new BattleResult(State);
     }
@@ -238,7 +237,7 @@ public sealed class BattleModel
     #endregion
 
 
-    #region ÆĞ¸µ
+    #region íŒ¨ë§
     public void OpenParryWindow()
     {
         if (State != BattleState.MonsterTurn)

@@ -1,5 +1,4 @@
 using Cysharp.Threading.Tasks;
-using DG.Tweening;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -15,28 +14,18 @@ public sealed class BattleCinematicDirector : MonoBehaviour
         PlayerParryAttack,
     }
 
-    private readonly BattleActorMover _actorMover = new BattleActorMover();
     private readonly Dictionary<CinematicSequenceType, int> _cinematicSequenceIndices = new();
 
     private IBattleCinematicEventHandler _eventHandler;
 
-    public void BindEventHandler(IBattleCinematicEventHandler eventHandler)
-    {
-        _eventHandler = eventHandler;
-    }
-
-    private UniTaskCompletionSource _battleStartCompletionSource;
-
-    /// <summary>
-    /// «ˆ¿Á ««∞› '¥Á«œ¥¬' ¥ÎªÛ
-    /// </summary>
-    private PlayableDirector _currentHitDirector;
-    private float _currentReturnDuration;
+    [Header("Actor Movement")]
+    [SerializeField]
+    private BattleActorMover _actorMover;
 
     [Header("Timeline")]
     [SerializeField]
     private PlayableDirector _battleStartDirector;
-    
+
     [SerializeField]
     private PlayableDirector[] _playerAttackDirectors;
 
@@ -52,6 +41,8 @@ public sealed class BattleCinematicDirector : MonoBehaviour
     [SerializeField]
     private PlayableDirector _monsterHitDirector;
 
+    private PlayableDirector _currentAttackDirector;
+
     [Header("Track Names")]
     [SerializeField]
     private string _playerAttackTrackName = "PlayerAnimationTrack";
@@ -62,46 +53,349 @@ public sealed class BattleCinematicDirector : MonoBehaviour
     [SerializeField]
     private string _commonTrackName = "AnimationTrack";
 
-    [Header("Camera Rig")]
+    [Header("Camera")]
     [SerializeField]
     private BattleCameraRig _cameraRig;
 
-    [Header("Move")]
     [SerializeField]
-    private float _playerApproachDistance = 2.5f;
+    private BattleCinematicShakeCamera _cinematicCamera;
+
+    [Header("Hit Stop")]
+    [SerializeField]
+    private float _parryHitStopTimeScale = 0.15f;
 
     [SerializeField]
-    private float _playerMoveDuration = 1.5f;
+    private int _parryHitStopDurationMs = 100;
 
-    [SerializeField]
-    private float _playerReturnDuration = 1.5f;
+    private UniTaskCompletionSource _battleStartCompletionSource;
 
-    [SerializeField]
-    private float _monsterApproachDistance = 1.5f;
-
-    [SerializeField]
-    private float _monsterMoveDuration = 1f;
-
-    [SerializeField]
-    private float _monsterReturnDuration = .8f;
+    /// <summary>
+    /// ÌòÑÏû¨ ÌîºÍ≤© 'ÎãπÌïòÎäî' ÎåÄÏÉÅ
+    /// </summary>
+    private PlayableDirector _currentHitDirector;
 
     private Func<BattleResult> _onImpact;
     private Func<BattleState> _onTurnEnd;
     private BattleResult _lastResult = BattleResult.None;
-
-    private bool _attackImpactHandled;
-
-    /// <summary>
-    /// «ˆ¿Á ¿Áª˝¡ﬂ¿Œ ∞¯∞› ≈∏¿”∂Û¿Œ
-    /// </summary>
-    [SerializeField]
-    PlayableDirector _currentAttackDirector;
-
+    private bool _isAttackImpactProcessed;
     private BattleTeam _currentAttackerTeam;
-    private ActorBase _attackActor, _defendActor;
+    private ActorBase _attackActor;
+    private ActorBase _defendActor;
     private Vector3 _attackerOriginPosition;
     private Quaternion _attackerOriginRotation;
 
+    public void BindEventHandler(IBattleCinematicEventHandler eventHandler)
+    {
+        _eventHandler = eventHandler;
+    }
+
+    public void BindActors(ActorBase player, ActorBase monster)
+    {
+        BindAnimator(_playerHitDirector, _commonTrackName, player);
+        BindAnimator(_monsterHitDirector, _commonTrackName, monster);
+
+        BindAnimators(_playerAttackDirectors, _playerAttackTrackName, player);
+        BindAnimators(_monsterAttackDirectors, _monsterAttackTrackName, monster);
+        BindAnimators(_playerParryAttackDirectors, _commonTrackName, player);
+    }
+
+    public async UniTask PlayBattleStartAsync()
+    {
+        if (_battleStartDirector == null)
+        {
+            return;
+        }
+
+        _battleStartCompletionSource = new UniTaskCompletionSource();
+
+        _battleStartDirector.time = 0;
+        _battleStartDirector.Evaluate();
+        _battleStartDirector.Play();
+
+        await _battleStartCompletionSource.Task;
+    }
+
+    public void PlayAttack(
+        BattleTeam attackerTeam,
+        ActorBase attacker,
+        ActorBase defender,
+        Action onApproachEnd,
+        Func<BattleResult> onImpact,
+        Func<BattleState> onTurnEnd)
+    {
+        _currentAttackDirector = GetAttackDirector(attackerTeam);
+        PlayableDirector hitDirector = GetDefenderHitDirector(attackerTeam);
+
+        _currentAttackerTeam = attackerTeam;
+        _currentHitDirector = hitDirector;
+
+        PlayAttackAsync(
+            attackerTeam,
+            attacker,
+            defender,
+            _currentAttackDirector,
+            hitDirector,
+            onApproachEnd,
+            onImpact,
+            onTurnEnd).Forget();
+    }
+
+    #region Timeline Signal
+    public void OnBattleStartEndSignal()
+    {
+        _battleStartCompletionSource?.TrySetResult();
+        _battleStartCompletionSource = null;
+    }
+
+    /// <summary>
+    /// Timeline SignalÍ≥º BattleModel ÌåêÏ†ïÏùÑ Ïó∞Í≤∞ÌïòÎäî Ïó∞Ï∂ú ÏßÑÏûÖÏ†ê.
+    /// Îç∞ÎØ∏ÏßÄ Ï†ÅÏö©ÏùÄ TimelineÏùò Impact ÏãúÏ†êÏóêÎßå Ïã§ÌñâÌïòÏó¨
+    /// Ïï†ÎãàÎ©îÏù¥ÏÖò ÌÉÄÏù¥Î∞çÍ≥º Í≤åÏûÑ Î°úÏßÅ Í≤∞Í≥ºÍ∞Ä Ïñ¥Í∏ãÎÇòÏßÄ ÏïäÎèÑÎ°ù ÌïúÎã§.
+    /// </summary>
+    public void OnAttackImpactSignal()
+    {
+        if (_isAttackImpactProcessed)
+        {
+            return;
+        }
+
+        _isAttackImpactProcessed = true;
+
+        if (_onImpact == null)
+        {
+            Debug.LogWarning("[BattleCinematicDirector] Hit signal received, but applyHit callback is null.");
+            return;
+        }
+
+        _lastResult = _onImpact();
+
+        if (_lastResult.IsFinished)
+        {
+            return;
+        }
+
+        switch (_lastResult.ReactionType)
+        {
+            case DefenderReactionType.Hit:
+            {
+                PlayDirector(_currentHitDirector);
+                break;
+            }
+            case DefenderReactionType.Parry:
+            {
+                _cameraRig?.PlayParrySuccessCamera(_defendActor, _attackActor);
+
+                LookAtTargetFlat(_attackActor, _defendActor);
+                LookAtTargetFlat(_defendActor, _attackActor);
+
+                _eventHandler.OnParrySucceeded();
+
+                ParryHitReactionAsync().Forget();
+
+                PlayableDirector parryAttackDirector = GetNextDirector(CinematicSequenceType.PlayerParryAttack, _playerParryAttackDirectors);
+
+                PlayDirector(parryAttackDirector);
+
+                break;
+            }
+            default:
+            {
+                break;
+            }
+        }
+    }
+
+    public void OnAttackHitReactionSignal()
+    {
+        PlayDirector(_currentHitDirector);
+    }
+
+    public void OnAttackEndSignal()
+    {
+        if (_lastResult.IsFinished)
+        {
+            ClearCallbacks();
+            return;
+        }
+
+        if (_lastResult.ReactionType == DefenderReactionType.Parry)
+        {
+            return;
+        }
+
+        AttackEnd().Forget();
+    }
+
+    public void OnParryEnableSignal()
+    {
+        if (_eventHandler == null)
+        {
+            return;
+        }
+
+        _eventHandler.OnParryWindowOpened();
+    }
+
+    public void OnParryDisableSignal()
+    {
+        if (_eventHandler == null)
+        {
+            return;
+        }
+
+        _eventHandler.OnParryWindowClosed();
+    }
+
+    public void OnParryImpactEffectSignal()
+    {
+        HitStopAnim(200).Forget();
+
+        PlayHitStopAsync(_parryHitStopTimeScale, _parryHitStopDurationMs).Forget();
+
+        _cinematicCamera?.PlayCounterImpact(GetBattleCenter());
+    }
+
+    public void OnParryEndSignal()
+    {
+        _attackActor.ResumeAnimator();
+        _defendActor.ForceIdle();
+
+        _eventHandler.OnParryEnd();
+    }
+    #endregion
+
+
+    #region Private Sequence
+    private async UniTask PlayAttackAsync(
+        BattleTeam attackerTeam,
+        ActorBase attacker,
+        ActorBase defender,
+        PlayableDirector attackDirector,
+        PlayableDirector hitDirector,
+        Action onApproachEnd,
+        Func<BattleResult> onImpact,
+        Func<BattleState> onTurnEnd)
+    {
+        if (attacker == null || defender == null)
+        {
+            Debug.LogError("[BattleCinematicDirector] PlayAttackAsync failed. Attacker or defender is null.");
+            return;
+        }
+
+        _attackerOriginPosition = attacker.transform.position;
+        _attackerOriginRotation = attacker.transform.rotation;
+
+        _attackActor = attacker;
+        _defendActor = defender;
+
+        _onImpact = onImpact;
+        _onTurnEnd = onTurnEnd;
+
+        _lastResult = BattleResult.None;
+
+        _isAttackImpactProcessed = false;
+
+        _cameraRig?.PlayMoveCamera(_currentAttackerTeam, attacker, defender);
+
+        if (_actorMover == null)
+        {
+            Debug.LogError("[BattleCinematicDirector] BattleActorMover is null.");
+            return;
+        }
+
+        await _actorMover.MoveToTargetAsync(
+            attackerTeam,
+            attacker.GetAnimator,
+            attacker.transform,
+            defender.transform);
+
+        onApproachEnd?.Invoke();
+
+        _cameraRig?.PlayAttackCamera(_currentAttackerTeam, attacker, defender);
+
+        PlayDirector(attackDirector);
+    }
+
+    /// <summary>
+    /// Ìå®ÎßÅ ÏÑ±Í≥µ Ïãú Î™¨Ïä§ÌÑ∞ Í≥µÍ≤© ÌÉÄÏûÑÎùºÏù∏ÏùÄ Ï¢ÖÎ£åÎêòÏßÄÎßå,
+    /// Î∞òÍ≤© ÏãúÌÄÄÏä§Í∞Ä ÏïÑÏßÅ ÏßÑÌñâ Ï§ëÏù¥ÎØÄÎ°ú Î≥µÍ∑Ä/ÌÑ¥ Ï¢ÖÎ£åÎäî ÌïòÏßÄ ÏïäÎäîÎã§.
+    /// Î™¨Ïä§ÌÑ∞Îäî Î∞òÍ≤© ÌîºÍ≤© Ï†ÑÍπåÏßÄ ÌòÑÏû¨ ÏûêÏÑ∏Î°ú Í≤ΩÏßÅÏãúÌÇ®Îã§.
+    /// </summary>
+    public async UniTask ParryHitReactionAsync()
+    {
+        if (_attackActor == null)
+        {
+            return;
+        }
+
+        _cinematicCamera?.PlayParryReaction(GetBattleCenter());
+
+        _currentAttackDirector?.Stop();
+
+        await HitStopAnim(100);
+    }
+
+    public async UniTask HitStopAnim(int stopTimeMs)
+    {
+        _attackActor.ResumeAnimator();
+
+        _attackActor.GetAnimator.speed = 1f;
+        _attackActor.GetAnimator.CrossFade("Hit", 0.03f, 0, 0f);
+
+        await UniTask.Delay(stopTimeMs, ignoreTimeScale: true);
+
+        _attackActor.PauseAnimator();
+    }
+
+    public async UniTask AttackEnd()
+    {
+        await _actorMover.ReturnAsync(_currentAttackerTeam, _attackActor.GetAnimator, _attackActor.transform, _attackerOriginPosition);
+
+        // ÏµúÏ¢Ö Î≥¥Ï†ï
+        _attackActor.transform.SetPositionAndRotation(_attackerOriginPosition, _attackerOriginRotation);
+
+        _cameraRig?.ReturnToBase();
+
+        if (_onTurnEnd != null)
+        {
+            _onTurnEnd();
+        }
+    }
+
+    public async UniTask OnParryEndAsync()
+    {
+        await _actorMover.ReturnAsync(
+            _currentAttackerTeam,
+            _attackActor.GetAnimator,
+            _attackActor.transform,
+            _attackerOriginPosition);
+
+        // ÏµúÏ¢Ö Î≥¥Ï†ï
+        _attackActor.transform.SetPositionAndRotation(_attackerOriginPosition, _attackerOriginRotation);
+        _cameraRig?.ReturnToBase();
+
+        if (_onTurnEnd != null)
+        {
+            _onTurnEnd();
+        }
+    }
+
+    private async UniTask PlayHitStopAsync(float timeScale, int durationMs)
+    {
+        float previousTimeScale = Time.timeScale;
+
+        Time.timeScale = timeScale;
+
+        await UniTask.Delay(
+            durationMs,
+            ignoreTimeScale: true);
+
+        Time.timeScale = previousTimeScale;
+    }
+    #endregion
+
+
+    #region Utility
     private void BindAnimators(PlayableDirector[] directors, string trackName, ActorBase actor)
     {
         if (directors == null)
@@ -150,40 +444,6 @@ public sealed class BattleCinematicDirector : MonoBehaviour
         Debug.LogError($"[BattleCinematicDirector] Timeline track not found. TrackName: {trackName}");
     }
 
-    public void BindActors(ActorBase player, ActorBase monster)
-    {
-        BindAnimator(_playerHitDirector, _commonTrackName, player);
-        BindAnimator(_monsterHitDirector, _commonTrackName, monster);
-
-        BindAnimators(_playerAttackDirectors, _playerAttackTrackName, player);
-        BindAnimators(_monsterAttackDirectors, _monsterAttackTrackName, monster);
-        BindAnimators(_playerParryAttackDirectors, _commonTrackName, player);
-    }
-
-    #region πË∆≤ Ω√¿€ ø¨√‚
-    public async UniTask PlayBattleStartAsync()
-    {
-        if (_battleStartDirector == null)
-        {
-            return;
-        }
-
-        _battleStartCompletionSource = new UniTaskCompletionSource();
-
-        _battleStartDirector.time = 0;
-        _battleStartDirector.Evaluate();
-        _battleStartDirector.Play();
-
-        await _battleStartCompletionSource.Task;
-    }
-
-    public void OnBattleStartEndSignal()
-    {
-        _battleStartCompletionSource?.TrySetResult();
-        _battleStartCompletionSource = null;
-    }
-    #endregion
-
     private void PlayDirector(PlayableDirector director)
     {
         if (director == null)
@@ -195,38 +455,6 @@ public sealed class BattleCinematicDirector : MonoBehaviour
         director.Play();
     }
 
-    public void PlayAttack(
-        BattleTeam attackerTeam,
-        ActorBase attacker,
-        ActorBase defender,
-        Action onApproachEnd,
-        Func<BattleResult> onImpact,
-        Func<BattleState> onTurnEnd)
-    {
-        _currentAttackDirector = GetAttackDirector(attackerTeam);
-        PlayableDirector hitDirector = GetDefenderHitDirector(attackerTeam);
-        float approachDistance = GetApproachDistance(attackerTeam);
-        float moveDuration = GetMoveDuration(attackerTeam);
-        float returnDuration = GetReturnDuration(attackerTeam);
-
-        _currentAttackerTeam = attackerTeam;
-        _currentHitDirector = hitDirector;
-        _currentReturnDuration = returnDuration;
-
-        PlayAttackAsync(
-            attacker,
-            defender,
-            _currentAttackDirector,
-            hitDirector,
-            approachDistance,
-            moveDuration,
-            returnDuration,
-            onApproachEnd,
-            onImpact,
-            onTurnEnd).Forget();
-    }
-
-    #region Get ¿Ø∆ø∏Æ∆º
     private PlayableDirector GetNextDirector(CinematicSequenceType sequenceType, PlayableDirector[] directors)
     {
         if (directors == null || directors.Length == 0)
@@ -276,315 +504,7 @@ public sealed class BattleCinematicDirector : MonoBehaviour
             : _playerHitDirector;
     }
 
-    private float GetApproachDistance(BattleTeam attackerTeam)
-    {
-        return attackerTeam == BattleTeam.Ally
-            ? _playerApproachDistance
-            : _monsterApproachDistance;
-    }
 
-    private float GetMoveDuration(BattleTeam attackerTeam)
-    {
-        return attackerTeam == BattleTeam.Ally
-            ? _playerMoveDuration
-            : _monsterMoveDuration;
-    }
-
-    private float GetReturnDuration(BattleTeam attackerTeam)
-    {
-        return attackerTeam == BattleTeam.Ally
-            ? _playerReturnDuration
-            : _monsterReturnDuration;
-    }
-    #endregion
-
-    private async UniTask PlayAttackAsync(
-        ActorBase attacker,
-        ActorBase defender,
-        PlayableDirector attackDirector,
-        PlayableDirector hitDirector,
-        float approachDistance,
-        float moveDuration,
-        float returnDuration,
-        Action onApproachEnd,
-        Func<BattleResult> onImpact,
-        Func<BattleState> onTurnEnd)
-    {
-        if (attacker == null || defender == null)
-        {
-            Debug.LogError("[BattleCinematicDirector] PlayAttackAsync failed. Attacker or defender is null.");
-            return;
-        }
-
-        _attackerOriginPosition = attacker.transform.position;
-        _attackerOriginRotation = attacker.transform.rotation;
-
-        _attackActor = attacker;
-        _defendActor = defender;
-
-        _onImpact = onImpact;
-        _onTurnEnd = onTurnEnd;
-
-        _lastResult = BattleResult.None;
-
-        _attackImpactHandled = false;
-
-        _cameraRig?.PlayMoveCamera(_currentAttackerTeam, attacker, defender);
-
-        await _actorMover.MoveToTargetAsync(
-            attacker.GetAnimator,
-            attacker.transform,
-            defender.transform,
-            approachDistance,
-            moveDuration);
-
-        onApproachEnd?.Invoke();
-
-        _cameraRig?.PlayAttackCamera(_currentAttackerTeam, attacker, defender);
-
-        PlayDirector(attackDirector);
-    }
-
-
-    #region ¿œπ› ∞¯∞› Ω√±◊≥Œ
-    /// <summary>
-    /// Timeline SignalReceiverø°º≠ »£√‚«—¥Ÿ.
-    /// ∞¯∞› ∆«¡§ ≈∏¿Ãπ÷ø° BattleModel µ•πÃ¡ˆ ¿˚øÎ + UI ∞ªΩ≈ ƒ›πÈ¿ª Ω««‡«—¥Ÿ.
-    /// </summary>
-    public void OnAttackImpactSignal()
-    {
-        if (_attackImpactHandled)
-        {
-            return;
-        }
-        if (_onImpact == null)
-        {
-            Debug.LogWarning("[BattleCinematicDirector] Hit signal received, but applyHit callback is null.");
-            return;
-        }
-
-        _lastResult = _onImpact();
-
-        if (_lastResult.IsFinished)
-        {
-            return;
-        }
-
-        switch (_lastResult.ReactionType)
-        {
-            case DefenderReactionType.Hit:
-            {
-                PlayDirector(_currentHitDirector);
-                break;
-            }
-            case DefenderReactionType.Parry:
-            {
-                _cameraRig?.PlayParrySuccessCamera(_defendActor, _attackActor);
-
-                LookAtTargetFlat(_attackActor, _defendActor);
-                LookAtTargetFlat(_defendActor, _attackActor);
-
-                _eventHandler.OnParrySucceeded();
-
-                ParryHitReactionAsync().Forget();
-                
-                PlayableDirector parryAttackDirector = GetNextDirector(CinematicSequenceType.PlayerParryAttack, _playerParryAttackDirectors);
-
-                PlayDirector(parryAttackDirector);
-
-                break;
-            }
-            default:
-            {
-                break;
-            }
-        }
-
-        _attackImpactHandled = true;
-    }
-
-    public void OnAttackHitReactionSignal()
-    {
-        PlayDirector(_currentHitDirector);
-    }
-
-    public void OnAttackEndSignal()
-    {
-        if (_lastResult.IsFinished)
-        {
-            ClearCallbacks();
-            return;
-        }
-
-        if (_lastResult.ReactionType == DefenderReactionType.Parry)
-        {
-            return;
-        }
-
-        AttackEnd().Forget();
-    }
-
-    /// <summary>
-    /// ∆–∏µ º∫∞¯ Ω√ ∏ÛΩ∫≈Õ ∞¯∞› ≈∏¿”∂Û¿Œ¿∫ ¡æ∑·µ«¡ˆ∏∏,
-    //  π›∞› Ω√ƒˆΩ∫∞° æ∆¡˜ ¡¯«‡ ¡ﬂ¿Ãπ«∑Œ ∫π±Õ/≈œ ¡æ∑·¥¬ «œ¡ˆ æ ¥¬¥Ÿ.
-    //  ∏ÛΩ∫≈Õ¥¬ π›∞› ««∞› ¿¸±Ó¡ˆ «ˆ¿Á ¿⁄ºº∑Œ ∞Ê¡˜Ω√≈≤¥Ÿ.
-    /// </summary>
-    /// <returns></returns>
-    public async UniTask ParryHitReactionAsync()
-    {
-        if (_attackActor == null)
-        {
-            return;
-        }
-
-        _cameraShake?.Shake(_parryShakeDuration, _parryShakeStrength);
-        _cameraShake?.ZoomPunch(
-            _parryZoomAmount,
-            _parryZoomInDuration,
-            _parryZoomOutDuration);
-
-        _cameraShake?.MovePunchToTarget(
-                GetBattleCenter(),
-                0.25f,
-                0.04f,
-                0.12f);
-
-        _currentAttackDirector?.Stop();
-
-        await HitStopAnim(100);
-    }
-
-    public async UniTask AttackEnd()
-    {
-        await _actorMover.ReturnAsync(_attackActor.GetAnimator, _attackActor.transform, _attackerOriginPosition, _currentReturnDuration);
-
-        // √÷¡æ ∫∏¡§
-        _attackActor.transform.SetPositionAndRotation(_attackerOriginPosition, _attackerOriginRotation);
-        
-        _cameraRig?.ReturnToBase();
-
-        if (_onTurnEnd != null)
-        {
-            _onTurnEnd();
-        }
-    }
-    #endregion
-
-
-    #region ∆–∏µ ∆«¡§ Ω√±◊≥Œ
-    // 1. ∆–∏µ ∞°¥… ±∏∞£ Ω√¿€
-    public void OnParryEnableSignal()
-    {
-        if (_eventHandler == null)
-        {
-            return;
-        }
-
-        _eventHandler.OnParryWindowOpened();
-    }
-
-
-    // 2. ∆–∏µ ∞°¥… ±∏∞£ ¡æ∑·
-    public void OnParryDisableSignal()
-    {
-        if (_eventHandler == null)
-        {
-            return;
-        }
-
-        _eventHandler.OnParryWindowClosed();
-    }
-    #endregion
-
-
-    #region π›∞› Ω√±◊≥Œ
-    public async UniTask HitStopAnim(int stopTimeMs)
-    {
-        Debug.LogWarning("HitStopAnimHitStopAnim!");
-
-        _attackActor.ResumeAnimator();
-
-        _attackActor.GetAnimator.speed = 1f;
-        _attackActor.GetAnimator.CrossFade("Hit", 0.03f, 0, 0f);
-
-        await UniTask.Delay(stopTimeMs, ignoreTimeScale: true);
-
-        _attackActor.PauseAnimator();
-    }
-
-    public void OnParryImpactEffectSignal()
-    {
-        //¿˚ ∞Ê¡˜ «Æ±‚
-        //_attackActor.ResumeAnimator();
-
-        HitStopAnim(200).Forget();
-
-        PlayHitStopAsync(
-        _parryHitStopTimeScale,
-        _parryHitStopDurationMs).Forget();
-
-        _cameraShake?.MovePunchToTarget(
-            GetBattleCenter(),
-            0.45f,
-            0.035f,
-            0.14f);
-
-        _cameraShake?.Shake(_counterShakeDuration, _counterShakeStrength);
-        _cameraShake?.ZoomPunch(
-            _counterZoomAmount,
-            _counterZoomInDuration,
-            _counterZoomOutDuration);
-    }
-
-    public void OnParryEndSignal()
-    {
-        _attackActor.ResumeAnimator();
-        _defendActor.ForceIdle();
-
-        _eventHandler.OnParryEnd();
-    }
-
-    public async UniTask OnParryEndAsync()
-    {
-        await _actorMover.ReturnAsync(
-           _attackActor.GetAnimator,
-           _attackActor.transform,
-           _attackerOriginPosition,
-           _currentReturnDuration);
-
-        // √÷¡æ ∫∏¡§
-        _attackActor.transform.SetPositionAndRotation(_attackerOriginPosition, _attackerOriginRotation);
-        _cameraRig?.ReturnToBase();
-
-        if (_onTurnEnd != null)
-        {
-            _onTurnEnd();
-        }
-    }
-
-    [SerializeField]
-    private float _parryHitStopTimeScale = 0.15f;
-
-    [SerializeField]
-    private int _parryHitStopDurationMs = 100;
-
-    private async UniTask PlayHitStopAsync(float timeScale, int durationMs)
-    {
-        float previousTimeScale = Time.timeScale;
-
-        Time.timeScale = timeScale;
-
-        await UniTask.Delay(
-            durationMs,
-            ignoreTimeScale: true);
-
-        Time.timeScale = previousTimeScale;
-    }
-
-    #endregion
-
-
-    #region ƒ´∏ﬁ∂Û Ω¶¿Ã≈© ø¨√‚
     private Vector3 GetBattleCenter()
     {
         if (_attackActor == null || _defendActor == null)
@@ -595,43 +515,6 @@ public sealed class BattleCinematicDirector : MonoBehaviour
         return (_attackActor.transform.position + _defendActor.transform.position) * 0.5f
             + Vector3.up * 1.0f;
     }
-
-    [Header("Camera Shake")]
-    [SerializeField]
-    private SimpleCameraShake _cameraShake;
-
-    [SerializeField]
-    private float _parryShakeDuration = 0.12f;
-
-    [SerializeField]
-    private float _parryShakeStrength = 0.07f;
-
-    [SerializeField]
-    private float _counterShakeDuration = 0.1f;
-
-    [SerializeField]
-    private float _counterShakeStrength = 0.12f;
-
-    [Header("Camera Zoom")]
-    [SerializeField]
-    private float _parryZoomAmount = 5f;
-
-    [SerializeField]
-    private float _parryZoomInDuration = 0.04f;
-
-    [SerializeField]
-    private float _parryZoomOutDuration = 0.12f;
-
-    [SerializeField]
-    private float _counterZoomAmount = 7f;
-
-    [SerializeField]
-    private float _counterZoomInDuration = 0.035f;
-
-    [SerializeField]
-    private float _counterZoomOutDuration = 0.14f;
-    #endregion
-
 
     private void LookAtTargetFlat(ActorBase actor, ActorBase target)
     {
@@ -657,18 +540,7 @@ public sealed class BattleCinematicDirector : MonoBehaviour
 
         _onImpact = null;
         _onTurnEnd = null;
-        _attackImpactHandled = false;
-    }
-
-    #region ≈∏¿”∂Û¿Œ ø¨√‚ ≈◊ö¿∆ÆøÎ
-    [Header("Editor Test")]
-    [SerializeField]
-    private PlayableDirector _testDirector;
-
-    [ContextMenu("Test Play Director")]
-    private void TestPlayDirector()
-    {
-        PlayDirector(_testDirector);
+        _isAttackImpactProcessed = false;
     }
     #endregion
 }
