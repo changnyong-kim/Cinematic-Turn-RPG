@@ -27,9 +27,9 @@ public sealed class BattleViewModel
     public ObservableValue<BattleTurnViewState> TurnText { get; } = new ObservableValue<BattleTurnViewState>(BattleTurnViewState.None);
     public ObservableValue<string> SkillNotiText { get; } = new ObservableValue<string>("");
 
-    public ObservableValue<(bool Visible, bool UseFade)> CommandUIVisible { get; } = new ObservableValue<(bool Visible, bool UseFade)>((true, true));
+    public ObservableValue<(bool Visible, bool UseFade)> CommandUIVisible { get; } = new ObservableValue<(bool Visible, bool UseFade)>((false, false));
 
-    public ObservableValue<(bool Visible, bool UseFade)> TurnTextVisible{ get; } = new ObservableValue<(bool Visible, bool UseFade)>((true, true));
+    public ObservableValue<(bool Visible, bool UseFade)> TurnTextVisible{ get; } = new ObservableValue<(bool Visible, bool UseFade)>((false, false));
 
     public ObservableValue<bool> AttackButtonInteractable { get; } = new ObservableValue<bool>(false);
     public ObservableValue<bool> ParryButtonInteractable { get; } = new ObservableValue<bool>(false);

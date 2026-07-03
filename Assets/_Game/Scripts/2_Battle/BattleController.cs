@@ -136,8 +136,6 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
             _cinematicDirector.BindEventHandler(this);
         }
 
-        _viewModel.HideBattleUI(useFade: false);
-
         RefreshBattleView();
 
         await _cinematicDirector.PlayBattleStartAsync();
@@ -281,7 +279,7 @@ public sealed class BattleController : MonoBehaviour, IBattleCinematicEventHandl
     {
         _monsterSkillSeqIdx++;
 
-        BattleSkillId skillId = (_monsterSkillSeqIdx % 2 == 0) ? BattleSkillId.MonsterStunAttack : BattleSkillId.MonsterNormalAttack;
+        BattleSkillId skillId = (_monsterSkillSeqIdx % 3 == 0) ? BattleSkillId.MonsterStunAttack : BattleSkillId.MonsterNormalAttack;
 
         var skillData = TableManager.Instance.GetBattleSkill(skillId);
         //패링 불가 공격은 버튼 잠금

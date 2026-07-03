@@ -1,5 +1,3 @@
-using UnityEngine;
-
 /// <summary>
 /// 전투 행동 처리 결과.
 /// 상태 전이 결과와 방어자 반응 타입을 함께 전달하여
@@ -226,7 +224,7 @@ public sealed class BattleModel
             return;
         }
 
-        int damage = Mathf.RoundToInt(attacker.AttackPower * skillData.PowerRate);
+        int damage = UnityEngine.Mathf.RoundToInt(attacker.AttackPower * skillData.PowerRate);
         defender.TakeDamage(damage);
     }
 
