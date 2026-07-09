@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 public class ActorBase : MonoBehaviour
@@ -8,13 +9,17 @@ public class ActorBase : MonoBehaviour
     private static readonly int StunnedHash = Animator.StringToHash("Stuned");
     private static readonly int DeadHash = Animator.StringToHash("Die");
 
-
     [SerializeField]
     private Animator _animator;
 
     [SerializeField]
     private GameObject _auraParticleGob;
 
+    [SerializeField]
+    private ActorDissolveEffect _dissolveEffect;
+
+    [SerializeField]
+    private int _dissolveDelayMs = 3000;
 
     protected int _maxHp;
     protected int _currentHp;
@@ -44,6 +49,11 @@ public class ActorBase : MonoBehaviour
             _animator = GetComponentInChildren<Animator>();
         }
 
+        if (_dissolveEffect == null)
+        {
+            _dissolveEffect = GetComponentInChildren<ActorDissolveEffect>(true);
+        }
+
         ActiveAuraParticle(true);
     }
 
@@ -53,8 +63,6 @@ public class ActorBase : MonoBehaviour
         {
             return;
         }
-
-        //damage = 0;
 
         ActiveAuraParticle(false);
 
@@ -101,6 +109,23 @@ public class ActorBase : MonoBehaviour
     protected virtual void Die()
     {
         GetAnimator.CrossFade(DeadHash, 0.1f);
+
+        PlayDissolveDelayedAsync().Forget();
+    }
+
+    private async UniTask PlayDissolveDelayedAsync()
+    {
+        await UniTask.Delay(
+            _dissolveDelayMs,
+            ignoreTimeScale: true,
+            cancellationToken: this.GetCancellationTokenOnDestroy());
+
+        if (_dissolveEffect == null)
+        {
+            return;
+        }
+
+        _dissolveEffect.PlayDissolve();
     }
 
     public virtual void Stunned()

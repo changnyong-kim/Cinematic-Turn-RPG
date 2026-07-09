@@ -72,6 +72,12 @@ public sealed class BattleCinematicDirector : MonoBehaviour
     [SerializeField]
     private int _parryHitStopDurationMs = 100;
 
+    [SerializeField]
+    private int _hitReactionAnimDurationMs = 100;
+
+    [SerializeField]
+    private int _parryHitReactionAnimDurationMs = 200;
+
     private UniTaskCompletionSource _battleStartCompletionSource;
 
     /// <summary>
@@ -253,7 +259,7 @@ public sealed class BattleCinematicDirector : MonoBehaviour
 
     public void OnParryImpactEffectSignal()
     {
-        HitStopAnim(200).Forget();
+        HitStopAnim(_parryHitReactionAnimDurationMs).Forget();
 
         PlayHitStopAsync(_parryHitStopTimeScale, _parryHitStopDurationMs).Forget();
 
@@ -337,7 +343,7 @@ public sealed class BattleCinematicDirector : MonoBehaviour
 
         _currentAttackDirector?.Stop();
 
-        await HitStopAnim(100);
+        await HitStopAnim(_hitReactionAnimDurationMs);
     }
 
     public async UniTask HitStopAnim(int stopTimeMs)
