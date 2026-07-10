@@ -194,19 +194,7 @@ public sealed class BattleCinematicDirector : MonoBehaviour
             }
             case DefenderReactionType.Parry:
             {
-                _cameraRig?.PlayParrySuccessCamera(_defendActor, _attackActor);
-
-                LookAtTargetFlat(_attackActor, _defendActor);
-                LookAtTargetFlat(_defendActor, _attackActor);
-
-                _eventHandler.OnParrySucceeded();
-
-                ParryHitReactionAsync().Forget();
-
-                PlayableDirector parryAttackDirector = GetNextDirector(CinematicSequenceType.PlayerParryAttack, _playerParryAttackDirectors);
-
-                PlayDirector(parryAttackDirector);
-
+                PlayParrySuccessSequence();
                 break;
             }
             default:
@@ -214,6 +202,24 @@ public sealed class BattleCinematicDirector : MonoBehaviour
                 break;
             }
         }
+    }
+
+    private void PlayParrySuccessSequence()
+    {
+        _cameraRig?.PlayParrySuccessCamera(_defendActor, _attackActor);
+
+        LookAtTargetFlat(_attackActor, _defendActor);
+        LookAtTargetFlat(_defendActor, _attackActor);
+
+        _eventHandler.OnParrySucceeded();
+
+        ParryHitReactionAsync().Forget();
+
+        _defendActor.PlayRimEffect();
+
+        PlayableDirector parryAttackDirector = GetNextDirector(CinematicSequenceType.PlayerParryAttack, _playerParryAttackDirectors);
+
+        PlayDirector(parryAttackDirector);
     }
 
     public void OnAttackHitReactionSignal()

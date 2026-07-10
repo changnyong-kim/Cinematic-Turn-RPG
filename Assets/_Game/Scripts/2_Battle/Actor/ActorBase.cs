@@ -19,6 +19,9 @@ public class ActorBase : MonoBehaviour
     private ActorDissolveEffect _dissolveEffect;
 
     [SerializeField]
+    private ParryRimEffect _parryRimEffect;
+
+    [SerializeField]
     private int _dissolveDelayMs = 3000;
 
     protected int _maxHp;
@@ -30,7 +33,6 @@ public class ActorBase : MonoBehaviour
     public int MaxHp => _maxHp;
     public int CurrentHp => _currentHp;
     public int AttackPower => _attackPower;
-
 
     public Animator GetAnimator => _animator;
 
@@ -44,15 +46,37 @@ public class ActorBase : MonoBehaviour
 
         _statusSet.Clear();
 
+#if UNITY_EDITOR
         if (_animator == null)
         {
             _animator = GetComponentInChildren<Animator>();
+
+            if (_animator == null)
+            {
+                Debug.LogError(
+                    $"[{name}] Animator 컴포넌트를 찾을 수 없습니다. " +
+                    "현재 오브젝트 또는 자식 오브젝트에 Animator가 있는지 확인해 주세요.",
+                    this);
+            }
+            else
+            {
+                Debug.LogWarning(
+                    $"[{name}] Animator가 인스펙터에 할당되지 않아 자동으로 탐색했습니다. " +
+                    "가능하면 인스펙터에서 미리 할당해 주세요.",
+                    this);
+            }
         }
 
         if (_dissolveEffect == null)
         {
-            _dissolveEffect = GetComponentInChildren<ActorDissolveEffect>(true);
+            TryGetComponent<ActorDissolveEffect>(out _dissolveEffect);
         }
+
+        if (_parryRimEffect == null)
+        {
+            TryGetComponent<ParryRimEffect>(out _parryRimEffect);
+        }
+#endif
 
         ActiveAuraParticle(true);
     }
@@ -136,6 +160,11 @@ public class ActorBase : MonoBehaviour
     public void SetBlocking(bool isBlocking)
     {
         _animator.SetBool(IsBlockingHash, isBlocking);
+    }
+
+    public void PlayRimEffect()
+    {
+        _parryRimEffect?.Play();
     }
 
     public void ForceIdle()

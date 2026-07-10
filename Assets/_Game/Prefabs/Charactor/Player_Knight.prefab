@@ -110,7 +110,7 @@ GameObject:
   m_Component:
   - component: {fileID: 646160333923551552}
   - component: {fileID: 7552624045925070422}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: SK_SWORDSMANGIRL_SHIRT
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -694,7 +694,7 @@ GameObject:
   m_Component:
   - component: {fileID: 733872576886991687}
   - component: {fileID: 9182898712365398191}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: SK_SWORDSMANGIRL_SKIRT
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -867,7 +867,7 @@ GameObject:
   m_Component:
   - component: {fileID: 327907408483412220}
   - component: {fileID: 1345066046406778901}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: SK_SWORDSMANGIRL_CARUNCLE
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1020,7 +1020,7 @@ GameObject:
   m_Component:
   - component: {fileID: 113386091266691312}
   - component: {fileID: 7044840775992297327}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: SK_SWORDSMANGIRL_TROUSERS
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1150,7 +1150,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7626058482014967466}
   - component: {fileID: 6550323548359879513}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: SK_SWORDSMANGIRL_BODY_06
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1482,6 +1482,7 @@ GameObject:
   - component: {fileID: 2910467338795168285}
   - component: {fileID: 4034414105697502548}
   - component: {fileID: 7662350916014105184}
+  - component: {fileID: 2796411506553464181}
   m_Layer: 0
   m_Name: Player_Knight
   m_TagString: Untagged
@@ -1521,6 +1522,8 @@ MonoBehaviour:
   _animator: {fileID: 4932571446134044010}
   _auraParticleGob: {fileID: 0}
   _dissolveEffect: {fileID: 7662350916014105184}
+  _parryRimEffect: {fileID: 0}
+  _dissolveDelayMs: 3000
 --- !u!114 &7662350916014105184
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1534,8 +1537,26 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Game.Battle::ActorDissolveEffect
   _renderers: []
+  _dissolveMaterialTemplate: {fileID: 0}
   _duration: 1
   _ease: 5
+--- !u!114 &2796411506553464181
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1183317602681492916}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 987830c45ad1a0e4198d0f08ad5dee06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Game.Battle::ParryRimEffect
+  _rimMaterial: {fileID: 2100000, guid: 00d035aa4b273e74d8702335c47d546b, type: 2}
+  _fadeInDuration: 0.1
+  _holdDuration: 0.2
+  _fadeOutDuration: 0.4
+  _peakIntensity: 1.2
 --- !u!1 &1216611520600770263
 GameObject:
   m_ObjectHideFlags: 0
@@ -1578,7 +1599,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5057805212007631525}
   - component: {fileID: 1874874108110069412}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: SK_SWORDSMANGIRL_LASHES
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1768,7 +1789,7 @@ GameObject:
   m_Component:
   - component: {fileID: 6770150642204117418}
   - component: {fileID: 3133088353839156694}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: SK_SWORDSMANGIRL_TEETH
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2290,7 +2311,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1338746993395117840}
   - component: {fileID: 4932571446134044010}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: SK_SwordsmanGirl_02 Variant
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2444,7 +2465,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3227869204750451393}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Body
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2541,7 +2562,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5004660725797707587}
   - component: {fileID: 5693371726451546306}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: SK_SWORDSMANGIRL_SHOULDERPAD
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2585,7 +2606,7 @@ SkinnedMeshRenderer:
   m_SmallMeshCulling: 1
   m_ForceMeshLod: -1
   m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
+  m_RenderingLayerMask: 3
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: 468fba1bc0c80374483f79fa455ad730, type: 2}
@@ -2682,7 +2703,7 @@ GameObject:
   m_Component:
   - component: {fileID: 9041784842244266710}
   - component: {fileID: 2992541984985811950}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: SK_SWORDSMANGIRL_EYES
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2991,7 +3012,7 @@ GameObject:
   m_Component:
   - component: {fileID: 9084413951515946909}
   - component: {fileID: 3706981370576227900}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: SK_SWORDSMANGIRL_HEAD
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3124,7 +3145,7 @@ GameObject:
   m_Component:
   - component: {fileID: 623678254099843513}
   - component: {fileID: 4076887340198642278}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: SK_SWORDSMANGIRL_HAIR_01
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3168,7 +3189,7 @@ SkinnedMeshRenderer:
   m_SmallMeshCulling: 1
   m_ForceMeshLod: -1
   m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
+  m_RenderingLayerMask: 3
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: 1632973a21dd8ba49997e9c161dca3bd, type: 2}
@@ -3910,7 +3931,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3069812678272363828}
   - component: {fileID: 7597209861494756891}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: SK_SWORDSMANGIRL_BLOUSE
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3954,7 +3975,7 @@ SkinnedMeshRenderer:
   m_SmallMeshCulling: 1
   m_ForceMeshLod: -1
   m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
+  m_RenderingLayerMask: 3
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: 468fba1bc0c80374483f79fa455ad730, type: 2}
@@ -4199,7 +4220,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4536719948542768121}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Hair
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -4811,7 +4832,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3114933070801167694}
   - component: {fileID: 330255012888770779}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: SK_SWORDSMANGIRL_CORSET
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5151,7 +5172,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3595401267664168485}
   - component: {fileID: 1187483393729831013}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: SK_SWORDSMANGIRL_GLOVES
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5195,7 +5216,7 @@ SkinnedMeshRenderer:
   m_SmallMeshCulling: 1
   m_ForceMeshLod: -1
   m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
+  m_RenderingLayerMask: 3
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: 468fba1bc0c80374483f79fa455ad730, type: 2}
@@ -5833,7 +5854,7 @@ GameObject:
   m_Component:
   - component: {fileID: 990369158546409509}
   - component: {fileID: 7786132422255125690}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: SK_SWORDSMANGIRL_BOOTS
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5877,7 +5898,7 @@ SkinnedMeshRenderer:
   m_SmallMeshCulling: 1
   m_ForceMeshLod: -1
   m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
+  m_RenderingLayerMask: 3
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: 468fba1bc0c80374483f79fa455ad730, type: 2}
@@ -6169,7 +6190,7 @@ GameObject:
   m_Component:
   - component: {fileID: 852518151503332662}
   - component: {fileID: 6150769630171136251}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: SK_SWORDSMANGIRL_BELT
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -6638,7 +6659,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2271602261944949100}
   - component: {fileID: 2613148708280857315}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: SK_SWORDSMANGIRL_SOCKS
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -6682,7 +6703,7 @@ SkinnedMeshRenderer:
   m_SmallMeshCulling: 1
   m_ForceMeshLod: -1
   m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
+  m_RenderingLayerMask: 3
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: 468fba1bc0c80374483f79fa455ad730, type: 2}
@@ -6880,7 +6901,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5358850755463388058}
   - component: {fileID: 2769178744195927025}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: SK_SWORDSMANGIRL_CORNEA
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -7047,7 +7068,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1576994339090182700}
   - component: {fileID: 8167060565466640495}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: SK_SWORDSMANGIRL_BODY_01
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -7091,7 +7112,7 @@ SkinnedMeshRenderer:
   m_SmallMeshCulling: 1
   m_ForceMeshLod: -1
   m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
+  m_RenderingLayerMask: 3
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: 8f731550f4aa70e45b42bbb70d19d30d, type: 2}
@@ -7346,7 +7367,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8670511195503390099}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Head
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -7478,7 +7499,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3728272760694483088}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Clothes
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -7713,7 +7734,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5203665765670268538}
   - component: {fileID: 3634328865845119140}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: SK_SWORDSMANGIRL_CAPE_OFF
   m_TagString: Untagged
   m_Icon: {fileID: 0}
