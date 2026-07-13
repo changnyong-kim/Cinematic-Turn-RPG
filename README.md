@@ -6,7 +6,7 @@ Unity 6 기반으로 제작한 Timeline 중심의 1:1 턴제 전투 프로젝트
 
 ## 시연 영상
 
-[YouTube Demo](https://www.youtube.com/watch?v=CdqxunqTpkw)
+[YouTube Demo](https://www.youtube.com/watch?v=Gctl4hHu1ks)
 
 > **Key Focus**  
 > Timeline Signal → BattleResult → Hit / Parry 연출 분기
@@ -145,11 +145,9 @@ UIBattleView
 - JSON Table Data
 
 ## 개선 예정
+- 입력 장치별 QTE / 패링 UI 분기
 - 몬스터 행동 선택 정책과 전투 시나리오 데이터 분리
 - BattleModel 상태 전이 단위 테스트와 Timeline Signal 검증 도구 추가
-
-## 추가 예정
-- 입력 장치별 QTE / 패링 UI 분기
 
 ## 리소스 안내
 
