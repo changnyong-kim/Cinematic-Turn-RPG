@@ -7,7 +7,7 @@ namespace UI
 {
     public class UIIntroScreen : MonoBehaviour
     {
-        [Header("¸Ş´º ¿¬Ãâ")]
+        [Header("ë©”ë‰´ ì—°ì¶œ")]
         [SerializeField]
         private UIMenuSelector _menuSelector;
 
@@ -81,7 +81,7 @@ namespace UI
             ShowMenu();
         }
 
-        #region ¸Ş´º
+        #region ë©”ë‰´
         private void OnIntroduce()
         {
             IsShowIntroduce = true;
@@ -193,11 +193,11 @@ namespace UI
             {
                 if (downloadBytes > 0)
                 {
-                    _needDownloadMessageText.text = $"Ãß°¡ ´Ù¿î·Îµå°¡ ÇÊ¿äÇÕ´Ï´Ù.\n¿ë·®: {FormatBytes(downloadBytes)}";
+                    _needDownloadMessageText.text = $"ì¶”ê°€ ë‹¤ìš´ë¡œë“œê°€ í•„ìš”í•©ë‹ˆë‹¤.\nìš©ëŸ‰: {FormatBytes(downloadBytes)}";
                 }
                 else
                 {
-                    _needDownloadMessageText.text = "Ãß°¡ ´Ù¿î·Îµå°¡ ÇÊ¿äÇÕ´Ï´Ù.";
+                    _needDownloadMessageText.text = "ì¶”ê°€ ë‹¤ìš´ë¡œë“œê°€ í•„ìš”í•©ë‹ˆë‹¤.";
                 }
             }
         }
@@ -267,7 +267,7 @@ namespace UI
             return $"{bytes} B";
         }
 
-        #region ÆäÀÌµåÀÎÆäÀÌµå¾Æ¿ô ¿¬Ãâ
+        #region í˜ì´ë“œì¸í˜ì´ë“œì•„ì›ƒ ì—°ì¶œ
         private async UniTask FadeOverlayAsync(float fromAlpha, float toAlpha, float duration)
             {
                 if (_fadeOverlayCanvasGroup == null)
@@ -288,7 +288,7 @@ namespace UI
 
                     float t = Mathf.Clamp01(elapsed / duration);
 
-                    // EaseOutQuad ´À³¦
+                    // EaseOutQuad ëŠë‚Œ
                     t = 1f - Mathf.Pow(1f - t, 2f);
 
                     _fadeOverlayCanvasGroup.alpha = Mathf.Lerp(fromAlpha, toAlpha, t);

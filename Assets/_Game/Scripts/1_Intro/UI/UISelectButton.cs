@@ -44,22 +44,6 @@ public class UISelectButton : MonoBehaviour
         _confirmBurst.gameObject.SetActive(false);
     }
 
-    private async Awaitable PlayConfirmAsync(int token)
-    {
-        _confirmBurst.gameObject.SetActive(true);
-
-        PlayEffect(_confirmBurst, true);
-
-        await Awaitable.WaitForSecondsAsync(1f);
-
-        if (token != _confirmToken)
-        {
-            return;
-        }
-
-        _confirmBurst.gameObject.SetActive(false);
-    }
-
     private void PlayEffect(UIParticle effect, bool restart)
     {
         if (effect == null)

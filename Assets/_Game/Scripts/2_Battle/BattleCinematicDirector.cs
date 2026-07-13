@@ -87,7 +87,7 @@ public sealed class BattleCinematicDirector : MonoBehaviour
 
     private Func<BattleResult> _onImpact;
     private Func<BattleState> _onTurnEnd;
-    private BattleResult _lastResult = BattleResult.None;
+    private BattleResult _currentSequenceResult = BattleResult.None;
     private bool _isAttackImpactProcessed;
     private BattleTeam _currentAttackerTeam;
     private ActorBase _attackActor;
@@ -178,14 +178,14 @@ public sealed class BattleCinematicDirector : MonoBehaviour
             return;
         }
 
-        _lastResult = _onImpact();
+        _currentSequenceResult = _onImpact();
 
-        if (_lastResult.IsFinished)
+        if (_currentSequenceResult.IsFinished)
         {
             return;
         }
 
-        switch (_lastResult.ReactionType)
+        switch (_currentSequenceResult.ReactionType)
         {
             case DefenderReactionType.Hit:
             {
@@ -229,13 +229,13 @@ public sealed class BattleCinematicDirector : MonoBehaviour
 
     public void OnAttackEndSignal()
     {
-        if (_lastResult.IsFinished)
+        if (_currentSequenceResult.IsFinished)
         {
             ClearCallbacks();
             return;
         }
 
-        if (_lastResult.ReactionType == DefenderReactionType.Parry)
+        if (_currentSequenceResult.ReactionType == DefenderReactionType.Parry)
         {
             return;
         }
@@ -308,7 +308,7 @@ public sealed class BattleCinematicDirector : MonoBehaviour
         _onImpact = onImpact;
         _onTurnEnd = onTurnEnd;
 
-        _lastResult = BattleResult.None;
+        _currentSequenceResult = BattleResult.None;
 
         _isAttackImpactProcessed = false;
 
